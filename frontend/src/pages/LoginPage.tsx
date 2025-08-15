@@ -28,7 +28,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         throw new Error(data.error || 'Failed to login');
       }
       onLogin(data.token);
-      navigate('/');
+      // navigate('/'); // Eliminado para permitir que App.tsx maneje la redirección por estado.
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred.');
     } finally {

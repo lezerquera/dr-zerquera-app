@@ -34,7 +34,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
       }
       
       onRegister(data.token);
-      navigate('/');
+      // navigate('/'); // Eliminado para permitir que App.tsx maneje la redirección por estado.
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred.');
