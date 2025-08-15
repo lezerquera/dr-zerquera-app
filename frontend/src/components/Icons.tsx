@@ -1,5 +1,6 @@
 
 
+
 import React from 'react';
 
 export const CalendarIcon = ({ className }: { className?: string }) => (
@@ -71,7 +72,7 @@ export const DesktopIcon = ({ className }: { className?: string }) => (
 
 export const Logo = ({ className }: { className?: string }) => (
     <img 
-      src="https://raw.githubusercontent.com/lezerquera/dr-zerquera-app/main/assets/zimi-logo.png"
+      src="/assets/zimi-logo.png"
       alt="ZIMI Logo" 
       className={className} 
     />
