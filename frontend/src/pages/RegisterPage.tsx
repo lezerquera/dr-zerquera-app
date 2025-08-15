@@ -48,15 +48,15 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
         <div className="max-w-md w-full bg-bg-main dark:bg-surface-dark rounded-xl shadow-2xl p-8 space-y-6">
             <div className="text-center">
                  <Logo className="w-48 mx-auto mb-4" />
-                <h2 className="text-2xl font-bold text-main dark:text-text-main">Crear Cuenta de Paciente</h2>
-                <p className="text-muted dark:text-text-muted">Regístrese para gestionar sus citas y comunicarse con nosotros.</p>
+                <h2 className="text-2xl font-bold text-main dark:text-main">Crear Cuenta de Paciente</h2>
+                <p className="text-muted dark:text-muted">Regístrese para gestionar sus citas y comunicarse con nosotros.</p>
             </div>
 
             {error && <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md text-sm" role="alert">{error}</div>}
 
             <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                    <label htmlFor="name" className="block text-sm font-medium text-main dark:text-text-main">Nombre Completo</label>
+                    <label htmlFor="name" className="block text-sm font-medium text-main dark:text-main">Nombre Completo</label>
                     <input
                         id="name"
                         name="name"
@@ -64,12 +64,12 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
                         required
                         value={formData.name}
                         onChange={handleChange}
-                        className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-text-main"
+                        className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-main"
                         placeholder="Nombre y Apellido"
                     />
                 </div>
                  <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-main dark:text-text-main">Correo Electrónico</label>
+                    <label htmlFor="email" className="block text-sm font-medium text-main dark:text-main">Correo Electrónico</label>
                     <input
                         id="email"
                         name="email"
@@ -78,12 +78,12 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
                         required
                         value={formData.email}
                         onChange={handleChange}
-                        className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-text-main"
+                        className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-main"
                         placeholder="tu@email.com"
                     />
                 </div>
                  <div>
-                    <label htmlFor="password" className="block text-sm font-medium text-main dark:text-text-main">Contraseña</label>
+                    <label htmlFor="password" className="block text-sm font-medium text-main dark:text-main">Contraseña</label>
                     <input
                         id="password"
                         name="password"
@@ -92,7 +92,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
                         required
                         value={formData.password}
                         onChange={handleChange}
-                        className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-text-main"
+                        className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-main"
                         placeholder="Mínimo 8 caracteres"
                     />
                 </div>
@@ -107,9 +107,9 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
                 </div>
             </form>
             
-            <p className="text-center text-sm text-muted dark:text-text-muted">
+            <p className="text-center text-sm text-muted dark:text-muted">
                 ¿Ya tienes una cuenta?{' '}
-                <Link to="/login" className="font-medium text-primary-light hover:text-primary dark:text-accent-turquoise dark:hover:text-accent-warm">
+                <Link to="/login" className="font-medium text-primary-light hover:text-primary dark:text-primary dark:hover:text-primary-light">
                     Inicia sesión
                 </Link>
             </p>

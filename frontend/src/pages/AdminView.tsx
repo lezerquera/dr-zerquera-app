@@ -116,23 +116,23 @@ const ClinicInfoManager = ({ clinicInfo, saveClinicInfo, appointments, confirmAp
                     <div className="space-y-4">
                         <div>
                             <label htmlFor="name" className="block text-sm font-medium text-main dark:text-main">Nombre de la clínica</label>
-                            <input type="text" name="name" id="name" value={info.name} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-text-light"/>
+                            <input type="text" name="name" id="name" value={info.name} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-main"/>
                         </div>
                         <div>
                             <label htmlFor="address" className="block text-sm font-medium text-main dark:text-main">Dirección</label>
-                            <input type="text" name="address" id="address" value={info.address} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-text-light"/>
+                            <input type="text" name="address" id="address" value={info.address} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-main"/>
                         </div>
                          <div>
                             <label htmlFor="phone" className="block text-sm font-medium text-main dark:text-main">Teléfono</label>
-                            <input type="text" name="phone" id="phone" value={info.phone} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-text-light"/>
+                            <input type="text" name="phone" id="phone" value={info.phone} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-main"/>
                         </div>
                          <div>
                             <label htmlFor="email" className="block text-sm font-medium text-main dark:text-main">Email de Contacto</label>
-                            <input type="email" name="email" id="email" value={info.email} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-text-light"/>
+                            <input type="email" name="email" id="email" value={info.email} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-main"/>
                         </div>
                          <div>
                             <label htmlFor="website" className="block text-sm font-medium text-main dark:text-main">Sitio Web</label>
-                            <input type="text" name="website" id="website" value={info.website} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-text-light"/>
+                            <input type="text" name="website" id="website" value={info.website} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-main"/>
                         </div>
                         <div className="pt-4">
                             <button onClick={handleSave} disabled={!hasChanges || isSaving} className="px-4 py-2 text-sm font-medium text-primary bg-accent-warm rounded-md hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed">
@@ -150,9 +150,9 @@ const ClinicInfoManager = ({ clinicInfo, saveClinicInfo, appointments, confirmAp
                                     <li key={app.id} className={`p-4 bg-bg-main dark:bg-bg-main rounded-lg shadow-sm border-l-4 ${app.status === 'Solicitada' ? 'border-accent-red' : 'border-accent-turquoise'}`}>
                                         <div className="flex justify-between items-start">
                                             <div>
-                                                <p className="font-semibold text-main dark:text-text-light">{app.service.name}</p>
-                                                <p className="text-sm text-muted dark:text-text-muted-dark/80">Paciente: {app.patientName}</p>
-                                                <p className="text-xs text-muted dark:text-text-muted-dark/80">{app.patientEmail} | {app.patientPhone}</p>
+                                                <p className="font-semibold text-main dark:text-main">{app.service.name}</p>
+                                                <p className="text-sm text-muted dark:text-muted">Paciente: {app.patientName}</p>
+                                                <p className="text-xs text-muted dark:text-muted">{app.patientEmail} | {app.patientPhone}</p>
                                             </div>
                                             <div className="text-right flex-shrink-0 ml-4">
                                                  <span className={`mt-1 inline-block px-2 py-1 text-xs font-medium rounded-full ${getStatusChip(app.status)}`}>{app.status}</span>
@@ -164,7 +164,7 @@ const ClinicInfoManager = ({ clinicInfo, saveClinicInfo, appointments, confirmAp
                                                     <h4 className="text-sm font-semibold">Motivo de la Consulta:</h4>
                                                     <span className={`px-2 py-0.5 text-xs font-semibold rounded-full border ${getUrgencyChip(app.urgency)}`}>{app.urgency}</span>
                                                 </div>
-                                                <p className="text-sm text-muted dark:text-text-muted-dark/80 bg-bg-alt dark:bg-bg-alt p-2 rounded-md">{app.reason}</p>
+                                                <p className="text-sm text-muted dark:text-muted bg-bg-alt dark:bg-bg-alt p-2 rounded-md">{app.reason}</p>
                                                 <div className="flex gap-2 mt-3">
                                                     <button onClick={() => confirmAppointment(app.id)} className="flex-1 text-xs px-2 py-1 bg-primary text-white rounded hover:opacity-90 flex items-center justify-center gap-1"><CheckCircleIcon className="w-4 h-4"/> Confirmar</button>
                                                     <button className="flex-1 text-xs px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 flex items-center justify-center gap-1"><ClockIcon className="w-4 h-4"/> Reprogramar</button>
@@ -173,8 +173,8 @@ const ClinicInfoManager = ({ clinicInfo, saveClinicInfo, appointments, confirmAp
                                         )}
                                         {app.status === 'Confirmada' && app.date && app.time && (
                                             <div className="mt-3 pt-3 border-t border-border-main dark:border-border-dark">
-                                                <p className="text-sm font-medium text-main dark:text-text-light">{new Date(`${app.date}T${app.time}`).toLocaleString('es-ES', { dateStyle: 'full', timeStyle: 'short' })}</p>
-                                                <p className="text-sm text-muted dark:text-text-muted-dark/80">Con: Dr. Zerquera</p>
+                                                <p className="text-sm font-medium text-main dark:text-main">{new Date(`${app.date}T${app.time}`).toLocaleString('es-ES', { dateStyle: 'full', timeStyle: 'short' })}</p>
+                                                <p className="text-sm text-muted dark:text-muted">Con: Dr. Zerquera</p>
                                             </div>
                                         )}
                                     </li>
@@ -222,8 +222,8 @@ const InsurancesManager = ({ allInsurances, acceptedInsurances, saveAcceptedInsu
                             className="w-full h-24 flex flex-col items-center justify-between p-2 rounded-md mb-4 bg-bg-alt dark:bg-bg-alt border-b-4"
                             style={{ borderColor: insurance.brandColor }}
                         >
-                            <ShieldIcon className="w-8 h-8 text-muted dark:text-text-light/80" />
-                            <p className="text-sm font-bold text-main dark:text-text-light text-center leading-tight">{insurance.name}</p>
+                            <ShieldIcon className="w-8 h-8 text-muted dark:text-main/80" />
+                            <p className="text-sm font-bold text-main dark:text-main text-center leading-tight">{insurance.name}</p>
                         </div>
                         
                         <label className="relative inline-flex items-center cursor-pointer">
@@ -368,24 +368,24 @@ const ServiceFormModal = ({ service, onSave, onClose }: { service: Service | nul
                 <h3 className="text-lg font-semibold text-accent-turquoise dark:text-primary">Información Básica</h3>
                 <div>
                     <label htmlFor="name" className="block text-sm font-medium text-main dark:text-main">Nombre del Servicio</label>
-                    <input type="text" name="name" id="name" value={formData.name} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-text-light"/>
+                    <input type="text" name="name" id="name" value={formData.name} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-main"/>
                 </div>
                 <div>
                     <label htmlFor="description" className="block text-sm font-medium text-main dark:text-main">Descripción Breve</label>
-                    <textarea name="description" id="description" rows={2} value={formData.description} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-text-light"/>
+                    <textarea name="description" id="description" rows={2} value={formData.description} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-main"/>
                 </div>
                  <div>
                     <label htmlFor="imageUrl" className="block text-sm font-medium text-main dark:text-main">URL de la Imagen</label>
-                    <input type="text" name="imageUrl" id="imageUrl" value={formData.imageUrl} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-text-light"/>
+                    <input type="text" name="imageUrl" id="imageUrl" value={formData.imageUrl} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-main"/>
                 </div>
                  <div className="grid grid-cols-2 gap-4">
                     <div>
                         <label htmlFor="duration" className="block text-sm font-medium text-main dark:text-main">Duración</label>
-                        <input type="text" name="duration" id="duration" value={formData.duration} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-text-light"/>
+                        <input type="text" name="duration" id="duration" value={formData.duration} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-main"/>
                     </div>
                     <div>
                         <label htmlFor="price" className="block text-sm font-medium text-main dark:text-main">Precio</label>
-                        <input type="text" name="price" id="price" value={formData.price} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-text-light"/>
+                        <input type="text" name="price" id="price" value={formData.price} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-main"/>
                     </div>
                  </div>
 
@@ -393,28 +393,28 @@ const ServiceFormModal = ({ service, onSave, onClose }: { service: Service | nul
                 
                 <div>
                     <label htmlFor="title" className="block text-sm font-medium text-main dark:text-main">Título Detallado</label>
-                    <input type="text" name="title" id="title" value={formData.detailedInfo.title} onChange={handleDetailedInfoChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-text-light"/>
+                    <input type="text" name="title" id="title" value={formData.detailedInfo.title} onChange={handleDetailedInfoChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-main"/>
                 </div>
                 <div>
                     <label htmlFor="benefits" className="block text-sm font-medium text-main dark:text-main">Beneficios (uno por línea)</label>
-                    <textarea name="benefits" id="benefits" rows={3} value={arrayToString(formData.detailedInfo.benefits)} onChange={handleDetailedInfoChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-text-light"/>
+                    <textarea name="benefits" id="benefits" rows={3} value={arrayToString(formData.detailedInfo.benefits)} onChange={handleDetailedInfoChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-main"/>
                 </div>
                 <div>
                     <label htmlFor="treats" className="block text-sm font-medium text-main dark:text-main">Condiciones que trata (uno por línea)</label>
-                    <textarea name="treats" id="treats" rows={3} value={arrayToString(formData.detailedInfo.treats)} onChange={handleDetailedInfoChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-text-light"/>
+                    <textarea name="treats" id="treats" rows={3} value={arrayToString(formData.detailedInfo.treats)} onChange={handleDetailedInfoChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-main"/>
                 </div>
                 <div>
                     <label htmlFor="process" className="block text-sm font-medium text-main dark:text-main">Proceso (uno por línea)</label>
-                    <textarea name="process" id="process" rows={3} value={arrayToString(formData.detailedInfo.process)} onChange={handleDetailedInfoChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-text-light"/>
+                    <textarea name="process" id="process" rows={3} value={arrayToString(formData.detailedInfo.process)} onChange={handleDetailedInfoChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-main"/>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <label htmlFor="frequency" className="block text-sm font-medium text-main dark:text-main">Frecuencia</label>
-                        <input type="text" name="frequency" id="frequency" value={formData.detailedInfo.frequency} onChange={handleDetailedInfoChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-text-light"/>
+                        <input type="text" name="frequency" id="frequency" value={formData.detailedInfo.frequency} onChange={handleDetailedInfoChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-main"/>
                     </div>
                     <div>
                         <label htmlFor="safety" className="block text-sm font-medium text-main dark:text-main">Seguridad</label>
-                        <input type="text" name="safety" id="safety" value={formData.detailedInfo.safety} onChange={handleDetailedInfoChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-text-light"/>
+                        <input type="text" name="safety" id="safety" value={formData.detailedInfo.safety} onChange={handleDetailedInfoChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-main"/>
                     </div>
                 </div>
 
@@ -422,16 +422,16 @@ const ServiceFormModal = ({ service, onSave, onClose }: { service: Service | nul
                  <div className="grid grid-cols-2 gap-4">
                     <div>
                         <label htmlFor="oldPrice" className="block text-sm font-medium text-main dark:text-main">Precio Anterior</label>
-                        <input type="text" name="oldPrice" id="oldPrice" placeholder="Ej: 300" value={formData.detailedInfo.specialOffer?.oldPrice || ''} onChange={handleSpecialOfferChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-text-light"/>
+                        <input type="text" name="oldPrice" id="oldPrice" placeholder="Ej: 300" value={formData.detailedInfo.specialOffer?.oldPrice || ''} onChange={handleSpecialOfferChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-main"/>
                     </div>
                     <div>
                         <label htmlFor="newPrice" className="block text-sm font-medium text-main dark:text-main">Precio Nuevo</label>
-                        <input type="text" name="newPrice" id="newPrice" placeholder="Ej: 240" value={formData.detailedInfo.specialOffer?.newPrice || ''} onChange={handleSpecialOfferChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-text-light"/>
+                        <input type="text" name="newPrice" id="newPrice" placeholder="Ej: 240" value={formData.detailedInfo.specialOffer?.newPrice || ''} onChange={handleSpecialOfferChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-main"/>
                     </div>
                 </div>
                 <div>
                     <label htmlFor="offerDescription" className="block text-sm font-medium text-main dark:text-main">Descripción de la Oferta</label>
-                    <input type="text" name="description" id="offerDescription" placeholder="Ej: Paquete de 6 Sesiones" value={formData.detailedInfo.specialOffer?.description || ''} onChange={handleSpecialOfferChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-text-light"/>
+                    <input type="text" name="description" id="offerDescription" placeholder="Ej: Paquete de 6 Sesiones" value={formData.detailedInfo.specialOffer?.description || ''} onChange={handleSpecialOfferChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-main"/>
                 </div>
 
                 <div className="flex justify-end gap-4 pt-4">
@@ -486,15 +486,15 @@ const DoctorProfileManager = ({ doctorProfile, saveDoctorProfile }: Pick<AdminVi
                         <h3 className="font-semibold text-lg mb-2 flex items-center gap-2 text-accent-turquoise dark:text-primary"><UsersIcon className="w-5 h-5"/>Identidad</h3>
                         <div>
                             <label htmlFor="name" className="block text-sm font-medium text-main dark:text-main">Nombre</label>
-                            <input type="text" name="name" value={profile.name} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm dark:text-text-light"/>
+                            <input type="text" name="name" value={profile.name} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm dark:text-main"/>
                         </div>
                          <div>
                             <label htmlFor="titles" className="block text-sm font-medium text-main dark:text-main">Títulos</label>
-                            <input type="text" name="titles" value={profile.titles} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm dark:text-text-light"/>
+                            <input type="text" name="titles" value={profile.titles} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm dark:text-main"/>
                         </div>
                          <div>
                             <label htmlFor="photoUrl" className="block text-sm font-medium text-main dark:text-main">URL de la Foto</label>
-                            <input type="text" name="photoUrl" value={profile.photoUrl} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm dark:text-text-light"/>
+                            <input type="text" name="photoUrl" value={profile.photoUrl} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm dark:text-main"/>
                         </div>
                          <img src={profile.photoUrl} alt="Preview" className="mt-4 w-32 h-32 rounded-full mx-auto object-cover"/>
                     </div>
@@ -504,15 +504,15 @@ const DoctorProfileManager = ({ doctorProfile, saveDoctorProfile }: Pick<AdminVi
                         <h3 className="font-semibold text-lg mb-2 flex items-center gap-2 text-accent-turquoise dark:text-primary"><StethoscopeIcon className="w-5 h-5"/>Contenido del Perfil</h3>
                         <div>
                             <label htmlFor="introduction" className="block text-sm font-medium text-main dark:text-main">Introducción</label>
-                            <textarea name="introduction" rows={4} value={profile.introduction} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm dark:text-text-light"/>
+                            <textarea name="introduction" rows={4} value={profile.introduction} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm dark:text-main"/>
                         </div>
                          <div>
                             <label htmlFor="experience" className="block text-sm font-medium text-main dark:text-main">Experiencia Profesional</label>
-                            <textarea name="experience" rows={3} value={profile.experience} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm dark:text-text-light"/>
+                            <textarea name="experience" rows={3} value={profile.experience} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm dark:text-main"/>
                         </div>
                         <div>
                             <label htmlFor="specialties" className="block text-sm font-medium text-main dark:text-main">Especialidades (separadas por coma)</label>
-                            <input type="text" name="specialties" value={profile.specialties.join(', ')} onChange={handleSpecialtiesChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm dark:text-text-light"/>
+                            <input type="text" name="specialties" value={profile.specialties.join(', ')} onChange={handleSpecialtiesChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm dark:text-main"/>
                         </div>
                     </div>
                     
@@ -521,9 +521,9 @@ const DoctorProfileManager = ({ doctorProfile, saveDoctorProfile }: Pick<AdminVi
                          <div className="space-y-4">
                              {profile.education.map(edu => (
                                 <div key={edu.id} className="p-3 bg-bg-main dark:bg-bg-main rounded-md border border-border-main dark:border-border-dark grid grid-cols-1 md:grid-cols-3 gap-2">
-                                     <input type="text" placeholder="Título" value={edu.degree} onChange={e => handleEducationChange(edu.id, 'degree', e.target.value)} className="w-full px-2 py-1 bg-bg-alt dark:bg-bg-alt rounded-md text-sm dark:text-text-light"/>
-                                     <input type="text" placeholder="Institución" value={edu.institution} onChange={e => handleEducationChange(edu.id, 'institution', e.target.value)} className="w-full px-2 py-1 bg-bg-alt dark:bg-bg-alt rounded-md text-sm dark:text-text-light"/>
-                                     <input type="text" placeholder="Ubicación" value={edu.location} onChange={e => handleEducationChange(edu.id, 'location', e.target.value)} className="w-full px-2 py-1 bg-bg-alt dark:bg-bg-alt rounded-md text-sm dark:text-text-light"/>
+                                     <input type="text" placeholder="Título" value={edu.degree} onChange={e => handleEducationChange(edu.id, 'degree', e.target.value)} className="w-full px-2 py-1 bg-bg-alt dark:bg-bg-alt rounded-md text-sm dark:text-main"/>
+                                     <input type="text" placeholder="Institución" value={edu.institution} onChange={e => handleEducationChange(edu.id, 'institution', e.target.value)} className="w-full px-2 py-1 bg-bg-alt dark:bg-bg-alt rounded-md text-sm dark:text-main"/>
+                                     <input type="text" placeholder="Ubicación" value={edu.location} onChange={e => handleEducationChange(edu.id, 'location', e.target.value)} className="w-full px-2 py-1 bg-bg-alt dark:bg-bg-alt rounded-md text-sm dark:text-main"/>
                                 </div>
                             ))}
                          </div>

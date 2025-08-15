@@ -199,18 +199,18 @@ const ServicesList = ({ services, clinicInfo }: { services: Service[], clinicInf
                         <img src={service.imageUrl} alt={service.name} className="w-full h-48 object-cover dark:brightness-110" />
                         <div className="p-6 flex flex-col flex-grow">
                             <h3 className="font-bold text-xl text-accent-turquoise dark:text-primary mb-2">{service.name}</h3>
-                            <p className="text-sm text-muted dark:text-text-muted-dark mb-4 flex-grow">{service.description}</p>
+                            <p className="text-sm text-muted dark:text-muted mb-4 flex-grow">{service.description}</p>
                             
                             <div className="border-t border-border-main dark:border-border-dark my-4"></div>
 
                             <div className="space-y-3 text-sm mb-6">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-muted dark:text-text-muted-dark font-medium">Duración:</span>
-                                    <span className="font-semibold text-main dark:text-text-light">{service.duration}</span>
+                                    <span className="text-muted dark:text-muted font-medium">Duración:</span>
+                                    <span className="font-semibold text-main dark:text-main">{service.duration}</span>
                                 </div>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-muted dark:text-text-muted-dark font-medium">Precio:</span>
-                                    <span className="font-semibold text-main dark:text-text-light">{service.price}</span>
+                                    <span className="text-muted dark:text-muted font-medium">Precio:</span>
+                                    <span className="font-semibold text-main dark:text-main">{service.price}</span>
                                 </div>
                             </div>
 
@@ -445,15 +445,15 @@ const AppointmentRequestForm = ({ services, requestAppointment, clinicInfo, user
                             <div className="space-y-4">
                                 <div>
                                     <label htmlFor="patientName" className="block text-sm font-medium text-main dark:text-main">Nombre Completo *</label>
-                                    <input type="text" id="patientName" placeholder="Nombre y apellidos completos" value={formData.patientName} onChange={e => setFormData({...formData, patientName: e.target.value})} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main dark:text-text-light border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light"/>
+                                    <input type="text" id="patientName" placeholder="Nombre y apellidos completos" value={formData.patientName} onChange={e => setFormData({...formData, patientName: e.target.value})} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main dark:text-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light"/>
                                 </div>
                                 <div>
                                     <label htmlFor="patientPhone" className="block text-sm font-medium text-main dark:text-main">Teléfono de Contacto *</label>
-                                    <input type="tel" id="patientPhone" placeholder="+1-305-274-4351" value={formData.patientPhone} onChange={e => setFormData({...formData, patientPhone: e.target.value})} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main dark:text-text-light border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light"/>
+                                    <input type="tel" id="patientPhone" placeholder="+1-305-274-4351" value={formData.patientPhone} onChange={e => setFormData({...formData, patientPhone: e.target.value})} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main dark:text-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light"/>
                                 </div>
                                 <div>
                                     <label htmlFor="patientEmail" className="block text-sm font-medium text-main dark:text-main">Correo Electrónico *</label>
-                                    <input type="email" id="patientEmail" placeholder="su-email@ejemplo.com" value={formData.patientEmail} onChange={e => setFormData({...formData, patientEmail: e.target.value})} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main dark:text-text-light border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light"/>
+                                    <input type="email" id="patientEmail" placeholder="su-email@ejemplo.com" value={formData.patientEmail} onChange={e => setFormData({...formData, patientEmail: e.target.value})} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main dark:text-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light"/>
                                 </div>
                             </div>
                         </div>
@@ -463,14 +463,14 @@ const AppointmentRequestForm = ({ services, requestAppointment, clinicInfo, user
                             <div className="space-y-4">
                                 <div>
                                     <label htmlFor="service" className="block text-sm font-medium text-main dark:text-main">Tipo de Servicio Requerido *</label>
-                                    <select id="service" value={formData.serviceId} onChange={e => setFormData({...formData, serviceId: e.target.value})} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main dark:text-text-light border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light">
+                                    <select id="service" value={formData.serviceId} onChange={e => setFormData({...formData, serviceId: e.target.value})} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main dark:text-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light">
                                         <option value="">Seleccione el tipo de consulta</option>
                                         {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                     </select>
                                 </div>
                                 <div>
                                     <label htmlFor="urgency" className="block text-sm font-medium text-main dark:text-main">Nivel de Urgencia *</label>
-                                    <select id="urgency" value={formData.urgency} onChange={e => setFormData({...formData, urgency: e.target.value})} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main dark:text-text-light border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light">
+                                    <select id="urgency" value={formData.urgency} onChange={e => setFormData({...formData, urgency: e.target.value})} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main dark:text-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light">
                                         <option value="">Seleccione nivel de urgencia</option>
                                         <option value="Rutinaria">Rutinaria</option>
                                         <option value="Moderada">Moderada</option>
@@ -479,7 +479,7 @@ const AppointmentRequestForm = ({ services, requestAppointment, clinicInfo, user
                                 </div>
                                 <div>
                                     <label htmlFor="reason" className="block text-sm font-medium text-main dark:text-main">Motivo de la Consulta *</label>
-                                    <textarea id="reason" rows={5} placeholder="Describa detalladamente su condición, síntomas, duración y cualquier información relevante para el Dr. Zerquera..." value={formData.reason} onChange={e => setFormData({...formData, reason: e.target.value})} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main dark:text-text-light border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light"/>
+                                    <textarea id="reason" rows={5} placeholder="Describa detalladamente su condición, síntomas, duración y cualquier información relevante para el Dr. Zerquera..." value={formData.reason} onChange={e => setFormData({...formData, reason: e.target.value})} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main dark:text-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light"/>
                                 </div>
                                 <div className="bg-accent-red/10 text-accent-red/80 p-3 rounded-lg flex gap-3">
                                     <LightbulbIcon className="w-8 h-8 flex-shrink-0 text-accent-red" />
@@ -559,7 +559,7 @@ const ChatInterface = ({ messages, onSendMessage, user }: { messages: ChatMessag
                         </button>
                     </div>
                     <div className="flex items-center gap-2">
-                        <input type="text" value={newMessage} onChange={e => setNewMessage(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleSend()} placeholder="Escriba su mensaje..." className="flex-grow px-3 py-2 bg-bg-main dark:bg-bg-main dark:text-text-light border border-border-main dark:border-border-dark rounded-full focus:outline-none focus:ring-2 focus:ring-primary-light"/>
+                        <input type="text" value={newMessage} onChange={e => setNewMessage(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleSend()} placeholder="Escriba su mensaje..." className="flex-grow px-3 py-2 bg-bg-main dark:bg-bg-main dark:text-main border border-border-main dark:border-border-dark rounded-full focus:outline-none focus:ring-2 focus:ring-primary-light"/>
                         <button onClick={handleSend} className="bg-primary text-white p-3 rounded-full hover:opacity-90 transition-opacity">
                             <SendIcon className="w-5 h-5"/>
                         </button>
