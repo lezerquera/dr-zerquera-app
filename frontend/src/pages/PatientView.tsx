@@ -51,7 +51,7 @@ const PatientView: React.FC<PatientViewProps> = (props) => {
 const PatientNavLink = ({ to, icon, label }: { to: string; icon: React.ReactNode; label: string }) => {
     const baseClasses = 'flex items-center p-3 text-sm font-medium rounded-md transition-colors duration-200';
     const activeClasses = 'bg-accent-warm text-primary font-semibold';
-    const inactiveClasses = 'text-muted dark:text-text-muted hover:text-main dark:hover:text-text-main hover:bg-accent-warm/30 dark:hover:bg-primary/10';
+    const inactiveClasses = 'text-muted dark:text-muted hover:text-main dark:hover:text-main hover:bg-accent-warm/30 dark:hover:bg-primary/10';
     const location = useLocation();
     const isBaseActive = to === '' && (location.pathname === '/' || location.pathname === '');
     const isActive = to ? location.pathname.includes(to) : isBaseActive;
@@ -70,8 +70,8 @@ const QuickActionCard = ({ to, icon, title, description }: { to: string; icon: R
         <div className="flex items-center justify-center w-12 h-12 bg-accent-warm/80 rounded-lg mb-4 group-hover:bg-accent-warm transition-colors">
             {icon}
         </div>
-        <h3 className="font-bold text-main dark:text-text-main mb-1">{title}</h3>
-        <p className="text-sm text-muted dark:text-text-main/80">{description}</p>
+        <h3 className="font-bold text-main dark:text-main mb-1">{title}</h3>
+        <p className="text-sm text-muted dark:text-main/80">{description}</p>
     </Link>
 );
 
@@ -99,7 +99,7 @@ const Dashboard = ({ appointments, clinicInfo, acceptedInsurances }: { appointme
 
                     {/* Quick Actions */}
                     <div>
-                        <h3 className="text-xl font-semibold mb-4 text-main dark:text-text-main">Acciones Rápidas</h3>
+                        <h3 className="text-xl font-semibold mb-4 text-main dark:text-main">Acciones Rápidas</h3>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <QuickActionCard 
                                 to="appointments"
@@ -132,13 +132,13 @@ const Dashboard = ({ appointments, clinicInfo, acceptedInsurances }: { appointme
                             <ul className="space-y-4">
                                 {upcomingAppointments.map(app => (
                                     <li key={app.id} className="p-4 bg-bg-main dark:bg-border-dark rounded-lg shadow-sm border-l-4 border-accent-turquoise">
-                                        <p className="font-bold text-main dark:text-text-main">{app.service.name}</p>
+                                        <p className="font-bold text-main dark:text-text-light">{app.service.name}</p>
                                         <div className="mt-3 pt-3 border-t border-border-main dark:border-border-dark text-sm space-y-2">
-                                            <div className="flex items-center gap-2 text-muted dark:text-text-muted">
+                                            <div className="flex items-center gap-2 text-muted dark:text-text-muted-dark">
                                                 <CalendarIcon className="w-4 h-4" />
                                                 <span>{app.date ? new Date(`${app.date}T00:00:00`).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Fecha por confirmar'}</span>
                                             </div>
-                                            <div className="flex items-center gap-2 text-muted dark:text-text-muted">
+                                            <div className="flex items-center gap-2 text-muted dark:text-text-muted-dark">
                                                 <ClockIcon className="w-4 h-4" />
                                                 <span>{app.time || 'Hora por confirmar'}</span>
                                             </div>
@@ -148,8 +148,8 @@ const Dashboard = ({ appointments, clinicInfo, acceptedInsurances }: { appointme
                             </ul>
                         ) : (
                             <div className="text-center flex-grow flex flex-col items-center justify-center p-4 border-2 border-dashed border-border-main dark:border-border-dark rounded-lg">
-                                <CalendarIcon className="w-12 h-12 text-muted dark:text-text-muted mb-3" />
-                                <p className="text-muted dark:text-text-muted mb-4 font-medium">No tiene citas próximas.</p>
+                                <CalendarIcon className="w-12 h-12 text-muted dark:text-muted mb-3" />
+                                <p className="text-muted dark:text-muted mb-4 font-medium">No tiene citas próximas.</p>
                                 <Link to="appointments" className="bg-primary hover:opacity-90 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-opacity text-sm">
                                     Solicitar una Cita
                                 </Link>
@@ -169,7 +169,7 @@ const Dashboard = ({ appointments, clinicInfo, acceptedInsurances }: { appointme
                         <AlertTriangleIcon className="w-6 h-6" />
                         Atención Urgente
                     </h3>
-                    <p className="mt-3 text-center sm:text-left text-main dark:text-text-main/90">
+                    <p className="mt-3 text-center sm:text-left text-main dark:text-main/90">
                         Si está experimentando una <strong>emergencia médica</strong>, por favor llame inmediatamente al <strong>911</strong>. Para consultas urgentes con nuestra clínica, puede contactarnos directamente a través de los siguientes medios:
                     </p>
                     <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8">
@@ -196,21 +196,21 @@ const ServicesList = ({ services, clinicInfo }: { services: Service[], clinicInf
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {services.map(service => (
                     <div key={service.id} className="bg-bg-main dark:bg-surface-dark/80 rounded-xl shadow-lg overflow-hidden flex flex-col transform hover:-translate-y-2 transition-transform duration-300 ease-in-out">
-                        <img src={service.imageUrl} alt={service.name} className="w-full h-48 object-cover" />
+                        <img src={service.imageUrl} alt={service.name} className="w-full h-48 object-cover dark:brightness-110" />
                         <div className="p-6 flex flex-col flex-grow">
                             <h3 className="font-bold text-xl text-accent-turquoise mb-2">{service.name}</h3>
-                            <p className="text-sm text-muted dark:text-text-main/80 mb-4 flex-grow">{service.description}</p>
+                            <p className="text-sm text-muted dark:text-text-muted-dark mb-4 flex-grow">{service.description}</p>
                             
                             <div className="border-t border-border-main dark:border-border-dark my-4"></div>
 
                             <div className="space-y-3 text-sm mb-6">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-muted dark:text-text-muted font-medium">Duración:</span>
-                                    <span className="font-semibold text-main dark:text-text-main">{service.duration}</span>
+                                    <span className="text-muted dark:text-text-muted-dark font-medium">Duración:</span>
+                                    <span className="font-semibold text-main dark:text-text-light">{service.duration}</span>
                                 </div>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-muted dark:text-text-muted font-medium">Precio:</span>
-                                    <span className="font-semibold text-main dark:text-text-main">{service.price}</span>
+                                    <span className="text-muted dark:text-text-muted-dark font-medium">Precio:</span>
+                                    <span className="font-semibold text-main dark:text-text-light">{service.price}</span>
                                 </div>
                             </div>
 
@@ -218,7 +218,7 @@ const ServicesList = ({ services, clinicInfo }: { services: Service[], clinicInf
                                 <Link to="/appointments" state={{ serviceId: service.id }} className="flex-1 bg-primary hover:opacity-90 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-opacity">
                                     <CalendarIcon className="w-5 h-5"/> Agendar
                                 </Link>
-                                <button onClick={() => setSelectedService(service)} className="flex-1 border border-primary dark:border-accent-turquoise text-primary dark:text-accent-turquoise hover:bg-primary dark:hover:bg-accent-turquoise hover:text-white dark:hover:text-primary font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors">
+                                <button onClick={() => setSelectedService(service)} className="flex-1 border border-primary dark:border-primary text-primary dark:text-primary hover:bg-primary dark:hover:bg-primary hover:text-white dark:hover:text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors">
                                     <ClipboardIcon className="w-5 h-5"/> Info
                                 </button>
                             </div>
@@ -250,7 +250,7 @@ const ServiceDetailModal = ({ service, clinicInfo, onClose }: { service: Service
                             {detailedInfo.benefits.map((item, index) => (
                                 <li key={index} className="flex items-start gap-3">
                                     <span className="text-accent-turquoise mt-1 font-bold">✓</span>
-                                    <span className="text-muted dark:text-text-main/80">{item}</span>
+                                    <span className="text-muted dark:text-main/80">{item}</span>
                                 </li>
                             ))}
                         </ul>
@@ -262,7 +262,7 @@ const ServiceDetailModal = ({ service, clinicInfo, onClose }: { service: Service
                             {detailedInfo.treats.map((item, index) => (
                                 <li key={index} className="flex items-start gap-3">
                                     <span className="text-muted mt-2 text-xs">•</span>
-                                    <span className="text-muted dark:text-text-main/80">{item}</span>
+                                    <span className="text-muted dark:text-main/80">{item}</span>
                                 </li>
                             ))}
                         </ul>
@@ -274,7 +274,7 @@ const ServiceDetailModal = ({ service, clinicInfo, onClose }: { service: Service
                             {detailedInfo.process.map((item, index) => (
                                 <li key={index} className="flex items-start gap-3">
                                     <span className="text-primary dark:text-accent-turquoise font-bold">{index + 1}.</span>
-                                    <span className="text-muted dark:text-text-main/80">{item}</span>
+                                    <span className="text-muted dark:text-main/80">{item}</span>
                                 </li>
                             ))}
                         </ol>
@@ -285,17 +285,17 @@ const ServiceDetailModal = ({ service, clinicInfo, onClose }: { service: Service
                     <div className="p-4 bg-bg-alt dark:bg-bg-alt rounded-lg flex flex-col items-center justify-center">
                         <ClockIcon className="w-8 h-8 mb-2 text-accent-turquoise"/>
                         <h4 className="font-bold">Duración</h4>
-                        <p className="text-muted dark:text-text-main/80">{service.duration}</p>
+                        <p className="text-muted dark:text-main/80">{service.duration}</p>
                     </div>
                     <div className="p-4 bg-bg-alt dark:bg-bg-alt rounded-lg flex flex-col items-center justify-center">
                         <CalendarIcon className="w-8 h-8 mb-2 text-accent-turquoise"/>
                         <h4 className="font-bold">Frecuencia</h4>
-                        <p className="text-muted dark:text-text-main/80">{detailedInfo.frequency}</p>
+                        <p className="text-muted dark:text-main/80">{detailedInfo.frequency}</p>
                     </div>
                     <div className="p-4 bg-bg-alt dark:bg-bg-alt rounded-lg flex flex-col items-center justify-center">
                         <ShieldIcon className="w-8 h-8 mb-2 text-accent-turquoise"/>
                         <h4 className="font-bold">Seguridad</h4>
-                        <p className="text-muted dark:text-text-main/80">{detailedInfo.safety}</p>
+                        <p className="text-muted dark:text-main/80">{detailedInfo.safety}</p>
                     </div>
                 </div>
 
@@ -304,15 +304,15 @@ const ServiceDetailModal = ({ service, clinicInfo, onClose }: { service: Service
                         <h3 className="text-xl font-bold text-accent-red tracking-wider">OFERTA ESPECIAL</h3>
                         <div className="flex items-baseline justify-center flex-wrap gap-x-4 gap-y-2 my-3">
                             {offer.oldPrice && <span className="text-2xl text-muted line-through">${offer.oldPrice}</span>}
-                            <span className="text-5xl font-bold text-primary dark:text-text-main">${offer.newPrice}</span>
+                            <span className="text-5xl font-bold text-primary dark:text-main">${offer.newPrice}</span>
                             {savings > 0 && <span className="text-lg font-semibold text-accent-turquoise bg-accent-turquoise/10 px-2 py-1 rounded">Ahorra ${savings}</span>}
                         </div>
-                        <p className="text-lg font-semibold text-main dark:text-text-main">{offer.description}</p>
+                        <p className="text-lg font-semibold text-main dark:text-main">{offer.description}</p>
                         <p className="text-sm text-muted mt-2">¡Oferta limitada! Contacte ahora</p>
                     </div>
                 )}
                 
-                <div className="text-center text-muted dark:text-text-main/80 space-y-2 my-8 border-t border-border-main dark:border-border-dark pt-6">
+                <div className="text-center text-muted dark:text-main/80 space-y-2 my-8 border-t border-border-main dark:border-border-dark pt-6">
                      <div className="flex items-center justify-center gap-2"><MapPinIcon className="w-5 h-5 text-muted-dark"/><p>{clinicInfo.address}</p></div>
                      <div className="flex items-center justify-center gap-2"><PhoneIcon className="w-5 h-5 text-muted-dark"/><p>{clinicInfo.phone}</p></div>
                      <a href={`https://${clinicInfo.website}`} target="_blank" rel="noopener noreferrer" className="text-primary dark:text-accent-turquoise hover:underline">{clinicInfo.website}</a>
@@ -322,7 +322,7 @@ const ServiceDetailModal = ({ service, clinicInfo, onClose }: { service: Service
                      <Link to="/appointments" state={{ serviceId: service.id }} className="w-full bg-primary hover:opacity-90 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-opacity text-lg" onClick={onClose}>
                         <CalendarIcon className="w-6 h-6"/> Agendar Consulta de {service.name}
                     </Link>
-                    <button onClick={onClose} className="w-full border border-border-main dark:border-border-dark text-main dark:text-text-main hover:bg-slate-100 dark:hover:bg-bg-alt/50 font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors">
+                    <button onClick={onClose} className="w-full border border-border-main dark:border-border-dark text-main dark:text-main hover:bg-slate-100 dark:hover:bg-bg-alt/50 font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors">
                         ← Volver a Servicios
                     </button>
                 </div>
@@ -336,12 +336,12 @@ const DoctorProfilePage = ({ doctorProfile }: { doctorProfile: DoctorProfile }) 
         <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 items-start">
             <div className="lg:w-1/3 w-full flex flex-col items-center flex-shrink-0 text-center">
                 <img src={doctorProfile.photoUrl} alt={doctorProfile.name} className="w-48 h-48 rounded-full object-cover border-4 border-accent-turquoise shadow-lg" />
-                <h2 className="text-2xl font-bold text-primary dark:text-text-main mt-4">{doctorProfile.name}</h2>
-                <p className="text-md text-muted dark:text-text-muted">{doctorProfile.titles}</p>
+                <h2 className="text-2xl font-bold text-primary dark:text-main mt-4">{doctorProfile.name}</h2>
+                <p className="text-md text-muted dark:text-muted">{doctorProfile.titles}</p>
             </div>
             <div className="lg:w-2/3 w-full space-y-8">
                 <div className="p-6 bg-bg-alt dark:bg-bg-alt rounded-lg shadow-sm">
-                    <p className="text-main dark:text-text-main/90 leading-relaxed">{doctorProfile.introduction}</p>
+                    <p className="text-main dark:text-main/90 leading-relaxed">{doctorProfile.introduction}</p>
                 </div>
 
                 <div className="space-y-8">
@@ -363,9 +363,9 @@ const DoctorProfilePage = ({ doctorProfile }: { doctorProfile: DoctorProfile }) 
                                 <li key={edu.id} className="flex items-start gap-4 p-4 bg-bg-alt dark:bg-bg-main rounded-lg shadow-sm">
                                     <GraduationCapIcon className="w-8 h-8 text-primary dark:text-accent-turquoise flex-shrink-0 mt-1"/>
                                     <div>
-                                        <p className="font-semibold text-main dark:text-text-main">{edu.degree}</p>
-                                        <p className="text-sm text-muted dark:text-text-muted">{edu.institution}</p>
-                                        <p className="text-xs text-muted dark:text-text-muted italic">{edu.location}</p>
+                                        <p className="font-semibold text-main dark:text-main">{edu.degree}</p>
+                                        <p className="text-sm text-muted dark:text-muted">{edu.institution}</p>
+                                        <p className="text-xs text-muted dark:text-muted italic">{edu.location}</p>
                                     </div>
                                 </li>
                             ))}
@@ -375,7 +375,7 @@ const DoctorProfilePage = ({ doctorProfile }: { doctorProfile: DoctorProfile }) 
                     <div>
                         <h3 className="flex items-center gap-3 font-bold text-xl mb-4 text-accent-turquoise"><BriefcaseIcon className="w-6 h-6"/>Experiencia Profesional</h3>
                         <div className="p-4 bg-bg-alt dark:bg-bg-alt rounded-lg shadow-sm">
-                           <p className="text-main dark:text-text-main/90 leading-relaxed">{doctorProfile.experience}</p>
+                           <p className="text-main dark:text-main/90 leading-relaxed">{doctorProfile.experience}</p>
                         </div>
                     </div>
                 </div>
@@ -419,8 +419,8 @@ const AppointmentRequestForm = ({ services, requestAppointment, clinicInfo, user
             <PageWrapper title="Solicitud Enviada">
                 <div className="text-center p-8">
                     <CheckCircleIcon className="w-16 h-16 text-accent-turquoise mx-auto mb-4" />
-                    <h2 className="text-2xl font-bold text-main dark:text-text-main mb-2">¡Gracias! Hemos recibido su solicitud.</h2>
-                    <p className="text-muted dark:text-text-main/80 max-w-2xl mx-auto">
+                    <h2 className="text-2xl font-bold text-main dark:text-main mb-2">¡Gracias! Hemos recibido su solicitud.</h2>
+                    <p className="text-muted dark:text-main/80 max-w-2xl mx-auto">
                         El Dr. Pablo Zerquera evaluará personalmente su solicitud y nuestro equipo le contactará en las próximas 24-48 horas para confirmar la fecha y hora de su cita.
                     </p>
                     <Link to="/" className="mt-6 inline-block bg-primary hover:opacity-90 text-white font-bold py-2 px-4 rounded-lg transition-opacity">
@@ -434,7 +434,7 @@ const AppointmentRequestForm = ({ services, requestAppointment, clinicInfo, user
     return (
         <PageWrapper title="Solicitud de Consulta Profesional">
             <div className="max-w-4xl mx-auto">
-                <p className="text-center text-muted dark:text-text-main/80 mb-8">El Dr. Pablo Zerquera evaluará personalmente su solicitud y le asignará la fecha más apropiada según su condición médica y urgencia. Recibirá confirmación detallada en 24-48 horas con toda la información necesaria.</p>
+                <p className="text-center text-muted dark:text-main/80 mb-8">El Dr. Pablo Zerquera evaluará personalmente su solicitud y le asignará la fecha más apropiada según su condición médica y urgencia. Recibirá confirmación detallada en 24-48 horas con toda la información necesaria.</p>
 
                 <form onSubmit={handleRequest} className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {/* Columna Izquierda: Formulario */}
@@ -444,16 +444,16 @@ const AppointmentRequestForm = ({ services, requestAppointment, clinicInfo, user
                             <h3 className="text-lg font-semibold flex items-center gap-2 mb-3 text-accent-turquoise"><UsersIcon className="w-6 h-6" /> Información del Paciente</h3>
                             <div className="space-y-4">
                                 <div>
-                                    <label htmlFor="patientName" className="block text-sm font-medium text-main dark:text-text-main">Nombre Completo *</label>
-                                    <input type="text" id="patientName" placeholder="Nombre y apellidos completos" value={formData.patientName} onChange={e => setFormData({...formData, patientName: e.target.value})} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main dark:text-text-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light"/>
+                                    <label htmlFor="patientName" className="block text-sm font-medium text-main dark:text-main">Nombre Completo *</label>
+                                    <input type="text" id="patientName" placeholder="Nombre y apellidos completos" value={formData.patientName} onChange={e => setFormData({...formData, patientName: e.target.value})} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main dark:text-text-light border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light"/>
                                 </div>
                                 <div>
-                                    <label htmlFor="patientPhone" className="block text-sm font-medium text-main dark:text-text-main">Teléfono de Contacto *</label>
-                                    <input type="tel" id="patientPhone" placeholder="+1-305-274-4351" value={formData.patientPhone} onChange={e => setFormData({...formData, patientPhone: e.target.value})} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main dark:text-text-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light"/>
+                                    <label htmlFor="patientPhone" className="block text-sm font-medium text-main dark:text-main">Teléfono de Contacto *</label>
+                                    <input type="tel" id="patientPhone" placeholder="+1-305-274-4351" value={formData.patientPhone} onChange={e => setFormData({...formData, patientPhone: e.target.value})} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main dark:text-text-light border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light"/>
                                 </div>
                                 <div>
-                                    <label htmlFor="patientEmail" className="block text-sm font-medium text-main dark:text-text-main">Correo Electrónico *</label>
-                                    <input type="email" id="patientEmail" placeholder="su-email@ejemplo.com" value={formData.patientEmail} onChange={e => setFormData({...formData, patientEmail: e.target.value})} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main dark:text-text-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light"/>
+                                    <label htmlFor="patientEmail" className="block text-sm font-medium text-main dark:text-main">Correo Electrónico *</label>
+                                    <input type="email" id="patientEmail" placeholder="su-email@ejemplo.com" value={formData.patientEmail} onChange={e => setFormData({...formData, patientEmail: e.target.value})} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main dark:text-text-light border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light"/>
                                 </div>
                             </div>
                         </div>
@@ -462,15 +462,15 @@ const AppointmentRequestForm = ({ services, requestAppointment, clinicInfo, user
                             <h3 className="text-lg font-semibold flex items-center gap-2 mb-3 text-accent-turquoise"><StethoscopeIcon className="w-6 h-6" /> Información Médica</h3>
                             <div className="space-y-4">
                                 <div>
-                                    <label htmlFor="service" className="block text-sm font-medium text-main dark:text-text-main">Tipo de Servicio Requerido *</label>
-                                    <select id="service" value={formData.serviceId} onChange={e => setFormData({...formData, serviceId: e.target.value})} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main dark:text-text-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light">
+                                    <label htmlFor="service" className="block text-sm font-medium text-main dark:text-main">Tipo de Servicio Requerido *</label>
+                                    <select id="service" value={formData.serviceId} onChange={e => setFormData({...formData, serviceId: e.target.value})} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main dark:text-text-light border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light">
                                         <option value="">Seleccione el tipo de consulta</option>
                                         {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                     </select>
                                 </div>
                                 <div>
-                                    <label htmlFor="urgency" className="block text-sm font-medium text-main dark:text-text-main">Nivel de Urgencia *</label>
-                                    <select id="urgency" value={formData.urgency} onChange={e => setFormData({...formData, urgency: e.target.value})} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main dark:text-text-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light">
+                                    <label htmlFor="urgency" className="block text-sm font-medium text-main dark:text-main">Nivel de Urgencia *</label>
+                                    <select id="urgency" value={formData.urgency} onChange={e => setFormData({...formData, urgency: e.target.value})} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main dark:text-text-light border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light">
                                         <option value="">Seleccione nivel de urgencia</option>
                                         <option value="Rutinaria">Rutinaria</option>
                                         <option value="Moderada">Moderada</option>
@@ -478,8 +478,8 @@ const AppointmentRequestForm = ({ services, requestAppointment, clinicInfo, user
                                     </select>
                                 </div>
                                 <div>
-                                    <label htmlFor="reason" className="block text-sm font-medium text-main dark:text-text-main">Motivo de la Consulta *</label>
-                                    <textarea id="reason" rows={5} placeholder="Describa detalladamente su condición, síntomas, duración y cualquier información relevante para el Dr. Zerquera..." value={formData.reason} onChange={e => setFormData({...formData, reason: e.target.value})} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main dark:text-text-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light"/>
+                                    <label htmlFor="reason" className="block text-sm font-medium text-main dark:text-main">Motivo de la Consulta *</label>
+                                    <textarea id="reason" rows={5} placeholder="Describa detalladamente su condición, síntomas, duración y cualquier información relevante para el Dr. Zerquera..." value={formData.reason} onChange={e => setFormData({...formData, reason: e.target.value})} required className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main dark:text-text-light border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light"/>
                                 </div>
                                 <div className="bg-accent-red/10 text-accent-red/80 p-3 rounded-lg flex gap-3">
                                     <LightbulbIcon className="w-8 h-8 flex-shrink-0 text-accent-red" />
@@ -492,7 +492,7 @@ const AppointmentRequestForm = ({ services, requestAppointment, clinicInfo, user
                     <div className="space-y-6">
                          <div>
                             <h3 className="text-lg font-semibold flex items-center gap-2 mb-3 text-primary dark:text-accent-turquoise"><ShieldIcon className="w-6 h-6" /> Compromiso Profesional</h3>
-                            <ul className="space-y-2 text-sm text-muted dark:text-text-main/80">
+                            <ul className="space-y-2 text-sm text-muted dark:text-main/80">
                                 <li className="flex items-center gap-2"><CheckCircleIcon className="w-5 h-5 text-accent-turquoise" /> El Dr. Zerquera revisará personalmente su solicitud</li>
                                 <li className="flex items-center gap-2"><CheckCircleIcon className="w-5 h-5 text-accent-turquoise" /> Se le asignará la fecha más conveniente para su condición</li>
                                 <li className="flex items-center gap-2"><CheckCircleIcon className="w-5 h-5 text-accent-turquoise" /> Recibirá confirmación con todos los detalles necesarios</li>
@@ -517,7 +517,7 @@ const AppointmentRequestForm = ({ services, requestAppointment, clinicInfo, user
                                 </a>
                             </div>
                         </div>
-                         <Link to="/" className="text-sm text-muted dark:text-text-muted hover:underline text-center block">
+                         <Link to="/" className="text-sm text-muted dark:text-muted hover:underline text-center block">
                             ← Volver al Inicio
                         </Link>
                     </div>
@@ -559,7 +559,7 @@ const ChatInterface = ({ messages, onSendMessage, user }: { messages: ChatMessag
                         </button>
                     </div>
                     <div className="flex items-center gap-2">
-                        <input type="text" value={newMessage} onChange={e => setNewMessage(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleSend()} placeholder="Escriba su mensaje..." className="flex-grow px-3 py-2 bg-bg-main dark:bg-bg-main dark:text-text-main border border-border-main dark:border-border-dark rounded-full focus:outline-none focus:ring-2 focus:ring-primary-light"/>
+                        <input type="text" value={newMessage} onChange={e => setNewMessage(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleSend()} placeholder="Escriba su mensaje..." className="flex-grow px-3 py-2 bg-bg-main dark:bg-bg-main dark:text-text-light border border-border-main dark:border-border-dark rounded-full focus:outline-none focus:ring-2 focus:ring-primary-light"/>
                         <button onClick={handleSend} className="bg-primary text-white p-3 rounded-full hover:opacity-90 transition-opacity">
                             <SendIcon className="w-5 h-5"/>
                         </button>
@@ -578,7 +578,7 @@ const ChatMessageBubble: React.FC<{ message: ChatMessage }> = ({ message }) => {
         return (
             <div className="my-2 p-4 bg-accent-red/10 border-l-4 border-accent-red rounded-r-lg">
                 <h4 className="font-bold text-accent-red flex items-center gap-2"><SparklesIcon className="w-5 h-5"/>Resumen de la Conversación</h4>
-                <p className="text-sm text-main dark:text-text-main whitespace-pre-wrap">{message.text}</p>
+                <p className="text-sm text-main dark:text-main whitespace-pre-wrap">{message.text}</p>
             </div>
         );
     }

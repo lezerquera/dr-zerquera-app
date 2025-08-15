@@ -9,7 +9,7 @@ interface PageWrapperProps {
 export const PageWrapper = ({ title, children }: PageWrapperProps) => {
     return (
         <div className="p-4 sm:p-6 lg:p-8 animate-fade-in">
-            <h1 className="text-2xl sm:text-3xl font-bold text-main dark:text-text-main mb-6 border-b border-border-main dark:border-border-dark pb-4">{title}</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-main dark:text-text-light mb-6 border-b border-border-main dark:border-border-dark pb-4">{title}</h1>
             {children}
         </div>
     );
