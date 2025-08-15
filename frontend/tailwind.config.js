@@ -1,3 +1,4 @@
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [
@@ -25,7 +26,7 @@ export default {
 
         // Dark Mode semantic colors
         'bg-dark': '#0A192F',
-        'surface-dark': '#112240', // A slightly lighter surface for dark mode cards
+        'surface-dark': '#C3EDF7', // Color de superficie para modo oscuro, un tono claro para legibilidad del texto.
         'text-light': '#E6F1FF',
         'text-muted-dark': '#A8B2D1',
         'border-dark': '#243A59',

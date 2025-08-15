@@ -127,7 +127,7 @@ const Dashboard = ({ appointments, clinicInfo, acceptedInsurances }: { appointme
                 <div className="lg:col-span-1 space-y-8">
                     {/* Upcoming Appointments */}
                     <div className="bg-bg-alt dark:bg-bg-alt p-6 rounded-xl shadow-md h-full flex flex-col">
-                        <h3 className="text-xl font-semibold mb-4 text-accent-turquoise flex items-center gap-2"><CalendarIcon className="w-6 h-6" /> Próximas Citas</h3>
+                        <h3 className="text-xl font-semibold mb-4 text-accent-turquoise dark:text-primary flex items-center gap-2"><CalendarIcon className="w-6 h-6" /> Próximas Citas</h3>
                         {upcomingAppointments.length > 0 ? (
                             <ul className="space-y-4">
                                 {upcomingAppointments.map(app => (
@@ -198,7 +198,7 @@ const ServicesList = ({ services, clinicInfo }: { services: Service[], clinicInf
                     <div key={service.id} className="bg-bg-main dark:bg-surface-dark/80 rounded-xl shadow-lg overflow-hidden flex flex-col transform hover:-translate-y-2 transition-transform duration-300 ease-in-out">
                         <img src={service.imageUrl} alt={service.name} className="w-full h-48 object-cover dark:brightness-110" />
                         <div className="p-6 flex flex-col flex-grow">
-                            <h3 className="font-bold text-xl text-accent-turquoise mb-2">{service.name}</h3>
+                            <h3 className="font-bold text-xl text-accent-turquoise dark:text-primary mb-2">{service.name}</h3>
                             <p className="text-sm text-muted dark:text-text-muted-dark mb-4 flex-grow">{service.description}</p>
                             
                             <div className="border-t border-border-main dark:border-border-dark my-4"></div>
@@ -241,11 +241,11 @@ const ServiceDetailModal = ({ service, clinicInfo, onClose }: { service: Service
     return (
         <Modal isOpen={true} onClose={onClose} title={service.name}>
              <div className="p-2 sm:p-4 max-h-[85vh] overflow-y-auto">
-                <h2 className="text-2xl sm:text-3xl font-bold text-center mb-6 text-accent-turquoise">{detailedInfo.title}</h2>
+                <h2 className="text-2xl sm:text-3xl font-bold text-center mb-6 text-accent-turquoise dark:text-primary">{detailedInfo.title}</h2>
                 
                 <div className="space-y-8 text-left">
                     <div>
-                        <h3 className="flex items-center gap-2 font-bold text-lg mb-3 text-primary dark:text-accent-turquoise"><SparklesIcon className="w-6 h-6"/>Beneficios</h3>
+                        <h3 className="flex items-center gap-2 font-bold text-lg mb-3 text-primary dark:text-primary"><SparklesIcon className="w-6 h-6"/>Beneficios</h3>
                         <ul className="space-y-2 pl-2">
                             {detailedInfo.benefits.map((item, index) => (
                                 <li key={index} className="flex items-start gap-3">
@@ -257,7 +257,7 @@ const ServiceDetailModal = ({ service, clinicInfo, onClose }: { service: Service
                     </div>
                     
                     <div>
-                        <h3 className="flex items-center gap-2 font-bold text-lg mb-3 text-primary dark:text-accent-turquoise"><TargetIcon className="w-6 h-6"/>Tratamos</h3>
+                        <h3 className="flex items-center gap-2 font-bold text-lg mb-3 text-primary dark:text-primary"><TargetIcon className="w-6 h-6"/>Tratamos</h3>
                         <ul className="space-y-2 pl-2">
                             {detailedInfo.treats.map((item, index) => (
                                 <li key={index} className="flex items-start gap-3">
@@ -269,7 +269,7 @@ const ServiceDetailModal = ({ service, clinicInfo, onClose }: { service: Service
                     </div>
 
                     <div>
-                        <h3 className="flex items-center gap-2 font-bold text-lg mb-3 text-primary dark:text-accent-turquoise"><RefreshCwIcon className="w-6 h-6"/>Proceso de Tratamiento</h3>
+                        <h3 className="flex items-center gap-2 font-bold text-lg mb-3 text-primary dark:text-primary"><RefreshCwIcon className="w-6 h-6"/>Proceso de Tratamiento</h3>
                         <ol className="space-y-2 pl-2">
                             {detailedInfo.process.map((item, index) => (
                                 <li key={index} className="flex items-start gap-3">
@@ -346,7 +346,7 @@ const DoctorProfilePage = ({ doctorProfile }: { doctorProfile: DoctorProfile }) 
 
                 <div className="space-y-8">
                     <div>
-                        <h3 className="flex items-center gap-3 font-bold text-xl mb-4 text-accent-turquoise"><StethoscopeIcon className="w-6 h-6"/>Especialidades Médicas</h3>
+                        <h3 className="flex items-center gap-3 font-bold text-xl mb-4 text-accent-turquoise dark:text-primary"><StethoscopeIcon className="w-6 h-6"/>Especialidades Médicas</h3>
                         <div className="flex flex-wrap gap-3">
                             {doctorProfile.specialties.map((spec, index) => (
                                 <span key={index} className="bg-accent-warm/80 text-primary font-medium px-3 py-1.5 rounded-full text-sm">
@@ -357,7 +357,7 @@ const DoctorProfilePage = ({ doctorProfile }: { doctorProfile: DoctorProfile }) 
                     </div>
 
                     <div>
-                        <h3 className="flex items-center gap-3 font-bold text-xl mb-4 text-accent-turquoise"><GraduationCapIcon className="w-6 h-6"/>Formación Académica</h3>
+                        <h3 className="flex items-center gap-3 font-bold text-xl mb-4 text-accent-turquoise dark:text-primary"><GraduationCapIcon className="w-6 h-6"/>Formación Académica</h3>
                         <ul className="space-y-4">
                             {doctorProfile.education.map(edu => (
                                 <li key={edu.id} className="flex items-start gap-4 p-4 bg-bg-alt dark:bg-bg-main rounded-lg shadow-sm">
@@ -373,7 +373,7 @@ const DoctorProfilePage = ({ doctorProfile }: { doctorProfile: DoctorProfile }) 
                     </div>
 
                     <div>
-                        <h3 className="flex items-center gap-3 font-bold text-xl mb-4 text-accent-turquoise"><BriefcaseIcon className="w-6 h-6"/>Experiencia Profesional</h3>
+                        <h3 className="flex items-center gap-3 font-bold text-xl mb-4 text-accent-turquoise dark:text-primary"><BriefcaseIcon className="w-6 h-6"/>Experiencia Profesional</h3>
                         <div className="p-4 bg-bg-alt dark:bg-bg-alt rounded-lg shadow-sm">
                            <p className="text-main dark:text-main/90 leading-relaxed">{doctorProfile.experience}</p>
                         </div>
@@ -441,7 +441,7 @@ const AppointmentRequestForm = ({ services, requestAppointment, clinicInfo, user
                     <div className="space-y-6">
                         {/* Paciente */}
                         <div>
-                            <h3 className="text-lg font-semibold flex items-center gap-2 mb-3 text-accent-turquoise"><UsersIcon className="w-6 h-6" /> Información del Paciente</h3>
+                            <h3 className="text-lg font-semibold flex items-center gap-2 mb-3 text-accent-turquoise dark:text-primary"><UsersIcon className="w-6 h-6" /> Información del Paciente</h3>
                             <div className="space-y-4">
                                 <div>
                                     <label htmlFor="patientName" className="block text-sm font-medium text-main dark:text-main">Nombre Completo *</label>
@@ -459,7 +459,7 @@ const AppointmentRequestForm = ({ services, requestAppointment, clinicInfo, user
                         </div>
                         {/* Info Medica */}
                         <div>
-                            <h3 className="text-lg font-semibold flex items-center gap-2 mb-3 text-accent-turquoise"><StethoscopeIcon className="w-6 h-6" /> Información Médica</h3>
+                            <h3 className="text-lg font-semibold flex items-center gap-2 mb-3 text-accent-turquoise dark:text-primary"><StethoscopeIcon className="w-6 h-6" /> Información Médica</h3>
                             <div className="space-y-4">
                                 <div>
                                     <label htmlFor="service" className="block text-sm font-medium text-main dark:text-main">Tipo de Servicio Requerido *</label>
@@ -491,7 +491,7 @@ const AppointmentRequestForm = ({ services, requestAppointment, clinicInfo, user
                     {/* Columna Derecha: Info adicional */}
                     <div className="space-y-6">
                          <div>
-                            <h3 className="text-lg font-semibold flex items-center gap-2 mb-3 text-primary dark:text-accent-turquoise"><ShieldIcon className="w-6 h-6" /> Compromiso Profesional</h3>
+                            <h3 className="text-lg font-semibold flex items-center gap-2 mb-3 text-primary dark:text-primary"><ShieldIcon className="w-6 h-6" /> Compromiso Profesional</h3>
                             <ul className="space-y-2 text-sm text-muted dark:text-main/80">
                                 <li className="flex items-center gap-2"><CheckCircleIcon className="w-5 h-5 text-accent-turquoise" /> El Dr. Zerquera revisará personalmente su solicitud</li>
                                 <li className="flex items-center gap-2"><CheckCircleIcon className="w-5 h-5 text-accent-turquoise" /> Se le asignará la fecha más conveniente para su condición</li>
