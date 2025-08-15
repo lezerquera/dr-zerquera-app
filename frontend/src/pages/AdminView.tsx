@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import type { ClinicInfo, Service, DoctorProfile, EducationItem, Appointment, DetailedInfo, Insurance } from '../types';
 import { PageWrapper } from '../components/PageWrapper';
@@ -330,12 +329,34 @@ const ServiceFormModal = ({ service, onSave, onClose }: { service: Service | nul
             }
         }));
     };
+    
+    const handleSpecialOfferChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            detailedInfo: {
+                ...prev.detailedInfo,
+                specialOffer: {
+                    ...(prev.detailedInfo.specialOffer || { oldPrice: '', newPrice: '', description: '' }),
+                    [name]: value,
+                },
+            },
+        }));
+    };
 
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSaving(true);
-        await onSave(formData);
+        
+        // Cleanup empty special offer before saving
+        const finalFormData = { ...formData };
+        const offer = finalFormData.detailedInfo.specialOffer;
+        if (offer && !offer.oldPrice && !offer.newPrice && !offer.description) {
+            delete finalFormData.detailedInfo.specialOffer;
+        }
+
+        await onSave(finalFormData);
         setIsSaving(false);
     };
 
@@ -395,6 +416,22 @@ const ServiceFormModal = ({ service, onSave, onClose }: { service: Service | nul
                         <label htmlFor="safety" className="block text-sm font-medium text-main dark:text-text-main">Seguridad</label>
                         <input type="text" name="safety" id="safety" value={formData.detailedInfo.safety} onChange={handleDetailedInfoChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-text-main"/>
                     </div>
+                </div>
+
+                <h3 className="text-lg font-semibold text-accent-turquoise pt-4 border-t border-border-main dark:border-border-dark">Oferta Especial (Opcional)</h3>
+                 <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label htmlFor="oldPrice" className="block text-sm font-medium text-main dark:text-text-main">Precio Anterior</label>
+                        <input type="text" name="oldPrice" id="oldPrice" placeholder="Ej: 300" value={formData.detailedInfo.specialOffer?.oldPrice || ''} onChange={handleSpecialOfferChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-text-main"/>
+                    </div>
+                    <div>
+                        <label htmlFor="newPrice" className="block text-sm font-medium text-main dark:text-text-main">Precio Nuevo</label>
+                        <input type="text" name="newPrice" id="newPrice" placeholder="Ej: 240" value={formData.detailedInfo.specialOffer?.newPrice || ''} onChange={handleSpecialOfferChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-text-main"/>
+                    </div>
+                </div>
+                <div>
+                    <label htmlFor="offerDescription" className="block text-sm font-medium text-main dark:text-text-main">Descripción de la Oferta</label>
+                    <input type="text" name="description" id="offerDescription" placeholder="Ej: Paquete de 6 Sesiones" value={formData.detailedInfo.specialOffer?.description || ''} onChange={handleSpecialOfferChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-text-main"/>
                 </div>
 
                 <div className="flex justify-end gap-4 pt-4">

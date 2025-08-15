@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { NavLink, Route, Routes, Link, useLocation } from 'react-router-dom';
 import type { DoctorProfile, Service, Appointment, ChatMessage, ClinicInfo, Insurance, User } from '../types';
@@ -234,85 +233,99 @@ const ServicesList = ({ services, clinicInfo }: { services: Service[], clinicInf
 
 const ServiceDetailModal = ({ service, clinicInfo, onClose }: { service: Service; clinicInfo: ClinicInfo; onClose: () => void; }) => {
     const { detailedInfo } = service;
-
-    const DetailSection = ({ icon, title, items, symbol }: { icon: React.ReactNode; title: string; items: string[], symbol: 'check' | 'bullet' | 'number' }) => (
-        <div>
-            <h3 className="flex items-center gap-2 font-bold text-lg mb-3 text-primary dark:text-accent-turquoise">{icon}{title}</h3>
-            <ul className="space-y-2">
-                {items.map((item, index) => (
-                    <li key={index} className="flex items-start gap-3">
-                        {symbol === 'check' && <span className="text-accent-turquoise mt-1">✓</span>}
-                        {symbol === 'bullet' && <span className="text-muted mt-2 text-xs">•</span>}
-                        {symbol === 'number' && <span className="text-accent-turquoise font-bold">{index + 1}</span>}
-                        <span className="text-muted dark:text-text-main/80">{item}</span>
-                    </li>
-                ))}
-            </ul>
-        </div>
-    );
+    const offer = detailedInfo.specialOffer;
+    const savings = offer && offer.oldPrice && offer.newPrice && !isNaN(parseFloat(offer.oldPrice)) && !isNaN(parseFloat(offer.newPrice))
+        ? parseFloat(offer.oldPrice) - parseFloat(offer.newPrice)
+        : 0;
 
     return (
-        <Modal isOpen={true} onClose={onClose} title="">
+        <Modal isOpen={true} onClose={onClose} title={service.name}>
              <div className="p-2 sm:p-4 max-h-[85vh] overflow-y-auto">
-                <h2 className="text-2xl sm:text-3xl font-bold text-center mb-4 text-accent-turquoise">{detailedInfo.title}</h2>
-                <div className="text-center mb-6">
-                    <SparklesIcon className="w-8 h-8 text-accent-red mx-auto" />
-                </div>
+                <h2 className="text-2xl sm:text-3xl font-bold text-center mb-6 text-accent-turquoise">{detailedInfo.title}</h2>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                    <DetailSection icon={<CheckCircleIcon className="w-6 h-6"/>} title="Beneficios" items={detailedInfo.benefits} symbol="check" />
-                    <DetailSection icon={<TargetIcon className="w-6 h-6"/>} title="Tratamos" items={detailedInfo.treats} symbol="bullet" />
-                </div>
-                
-                <div className="mb-8 p-6 bg-bg-alt dark:bg-bg-alt/80 rounded-lg">
-                    <DetailSection icon={<RefreshCwIcon className="w-6 h-6"/>} title="Proceso de Tratamiento" items={detailedInfo.process} symbol="number" />
+                <div className="space-y-8 text-left">
+                    <div>
+                        <h3 className="flex items-center gap-2 font-bold text-lg mb-3 text-primary dark:text-accent-turquoise"><SparklesIcon className="w-6 h-6"/>Beneficios</h3>
+                        <ul className="space-y-2 pl-2">
+                            {detailedInfo.benefits.map((item, index) => (
+                                <li key={index} className="flex items-start gap-3">
+                                    <span className="text-accent-turquoise mt-1 font-bold">✓</span>
+                                    <span className="text-muted dark:text-text-main/80">{item}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                    
+                    <div>
+                        <h3 className="flex items-center gap-2 font-bold text-lg mb-3 text-primary dark:text-accent-turquoise"><TargetIcon className="w-6 h-6"/>Tratamos</h3>
+                        <ul className="space-y-2 pl-2">
+                            {detailedInfo.treats.map((item, index) => (
+                                <li key={index} className="flex items-start gap-3">
+                                    <span className="text-muted mt-2 text-xs">•</span>
+                                    <span className="text-muted dark:text-text-main/80">{item}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h3 className="flex items-center gap-2 font-bold text-lg mb-3 text-primary dark:text-accent-turquoise"><RefreshCwIcon className="w-6 h-6"/>Proceso de Tratamiento</h3>
+                        <ol className="space-y-2 pl-2">
+                            {detailedInfo.process.map((item, index) => (
+                                <li key={index} className="flex items-start gap-3">
+                                    <span className="text-primary dark:text-accent-turquoise font-bold">{index + 1}.</span>
+                                    <span className="text-muted dark:text-text-main/80">{item}</span>
+                                </li>
+                            ))}
+                        </ol>
+                    </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8 text-center">
-                    <div className="p-4 bg-bg-alt dark:bg-bg-alt rounded-lg">
-                        <ClockIcon className="w-8 h-8 mx-auto mb-2 text-accent-turquoise"/>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 my-8 text-center">
+                    <div className="p-4 bg-bg-alt dark:bg-bg-alt rounded-lg flex flex-col items-center justify-center">
+                        <ClockIcon className="w-8 h-8 mb-2 text-accent-turquoise"/>
                         <h4 className="font-bold">Duración</h4>
                         <p className="text-muted dark:text-text-main/80">{service.duration}</p>
                     </div>
-                    <div className="p-4 bg-bg-alt dark:bg-bg-alt rounded-lg">
-                        <CalendarIcon className="w-8 h-8 mx-auto mb-2 text-accent-turquoise"/>
+                    <div className="p-4 bg-bg-alt dark:bg-bg-alt rounded-lg flex flex-col items-center justify-center">
+                        <CalendarIcon className="w-8 h-8 mb-2 text-accent-turquoise"/>
                         <h4 className="font-bold">Frecuencia</h4>
                         <p className="text-muted dark:text-text-main/80">{detailedInfo.frequency}</p>
                     </div>
-                    <div className="p-4 bg-bg-alt dark:bg-bg-alt rounded-lg">
-                        <ShieldIcon className="w-8 h-8 mx-auto mb-2 text-accent-turquoise"/>
+                    <div className="p-4 bg-bg-alt dark:bg-bg-alt rounded-lg flex flex-col items-center justify-center">
+                        <ShieldIcon className="w-8 h-8 mb-2 text-accent-turquoise"/>
                         <h4 className="font-bold">Seguridad</h4>
                         <p className="text-muted dark:text-text-main/80">{detailedInfo.safety}</p>
                     </div>
                 </div>
 
-                {detailedInfo.specialOffer && (
-                    <div className="mb-8 border-4 border-dashed border-accent-red rounded-lg p-6 text-center bg-accent-red/10">
-                        <h3 className="text-xl font-bold text-accent-red">OFERTA ESPECIAL</h3>
-                        <div className="flex items-center justify-center gap-4 my-4">
-                            <span className="text-3xl text-muted line-through">${detailedInfo.specialOffer.oldPrice}</span>
-                            <span className="text-5xl font-bold text-primary dark:text-text-main">${detailedInfo.specialOffer.newPrice}</span>
+                {offer && offer.newPrice && (
+                    <div className="mb-8 border-2 border-accent-red rounded-lg p-6 text-center bg-accent-red/10">
+                        <h3 className="text-xl font-bold text-accent-red tracking-wider">OFERTA ESPECIAL</h3>
+                        <div className="flex items-baseline justify-center flex-wrap gap-x-4 gap-y-2 my-3">
+                            {offer.oldPrice && <span className="text-2xl text-muted line-through">${offer.oldPrice}</span>}
+                            <span className="text-5xl font-bold text-primary dark:text-text-main">${offer.newPrice}</span>
+                            {savings > 0 && <span className="text-lg font-semibold text-accent-turquoise bg-accent-turquoise/10 px-2 py-1 rounded">Ahorra ${savings}</span>}
                         </div>
-                        <p className="text-lg font-semibold text-main dark:text-text-main">{detailedInfo.specialOffer.description}</p>
+                        <p className="text-lg font-semibold text-main dark:text-text-main">{offer.description}</p>
                         <p className="text-sm text-muted mt-2">¡Oferta limitada! Contacte ahora</p>
                     </div>
                 )}
                 
-                <div className="text-center text-muted dark:text-text-main/80 space-y-2 mb-8">
+                <div className="text-center text-muted dark:text-text-main/80 space-y-2 my-8 border-t border-border-main dark:border-border-dark pt-6">
                      <div className="flex items-center justify-center gap-2"><MapPinIcon className="w-5 h-5 text-muted-dark"/><p>{clinicInfo.address}</p></div>
                      <div className="flex items-center justify-center gap-2"><PhoneIcon className="w-5 h-5 text-muted-dark"/><p>{clinicInfo.phone}</p></div>
-                     <a href={`http://${clinicInfo.website}`} target="_blank" rel="noopener noreferrer" className="text-primary dark:text-accent-turquoise hover:underline">{clinicInfo.website}</a>
+                     <a href={`https://${clinicInfo.website}`} target="_blank" rel="noopener noreferrer" className="text-primary dark:text-accent-turquoise hover:underline">{clinicInfo.website}</a>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-4">
-                     <Link to="/appointments" state={{ serviceId: service.id }} className="flex-1 bg-primary hover:opacity-90 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-opacity text-lg" onClick={onClose}>
-                        <CalendarIcon className="w-6 h-6"/> Agendar Consulta
+                <div className="flex flex-col gap-4">
+                     <Link to="/appointments" state={{ serviceId: service.id }} className="w-full bg-primary hover:opacity-90 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-opacity text-lg" onClick={onClose}>
+                        <CalendarIcon className="w-6 h-6"/> Agendar Consulta de {service.name}
                     </Link>
-                    <button onClick={onClose} className="flex-1 border border-border-main dark:border-border-dark text-main dark:text-text-main hover:bg-slate-100 dark:hover:bg-bg-alt/50 font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors">
+                    <button onClick={onClose} className="w-full border border-border-main dark:border-border-dark text-main dark:text-text-main hover:bg-slate-100 dark:hover:bg-bg-alt/50 font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors">
                         ← Volver a Servicios
                     </button>
                 </div>
-
             </div>
         </Modal>
     )
