@@ -151,7 +151,7 @@ export const initializeDatabase = async () => {
 
     await client.query(`
       INSERT INTO doctor_profile (id, name, titles, photo_url, introduction, specialties, experience) VALUES
-      (1, 'Dr. Pablo J. Zerquera', 'MD, FACP', 'https://raw.githubusercontent.com/lezerquera/dr-zerquera-app/main/assets/dr-zerquera.jpeg',
+      (1, 'Dr. Pablo J. Zerquera', 'MD, FACP', '/assets/dr-zerquera.webp',
       'El Dr. Pablo J. Zerquera es un médico internista con más de 20 años de experiencia, certificado por la junta, que se especializa en medicina integrativa. Su enfoque combina la medicina convencional con terapias complementarias basadas en la evidencia para tratar a la persona en su totalidad, no solo los síntomas. El Dr. Zerquera cree firmemente en la creación de planes de tratamiento personalizados que aborden las causas fundamentales de la enfermedad y promuevan el bienestar a largo plazo, capacitando a sus pacientes para que tomen un papel activo en su propia salud.',
       '{"Medicina Interna", "Medicina Integrativa", "Acupuntura Médica", "Manejo del Dolor Crónico", "Salud Digestiva", "Prevención y Bienestar"}',
       'Con una distinguida carrera que abarca más de dos décadas, el Dr. Zerquera ha servido como médico de atención primaria y consultor en diversos entornos clínicos. Ha completado una formación avanzada en acupuntura médica y medicina funcional. Su experiencia radica en el diagnóstico y tratamiento de condiciones médicas complexas, con un interés particular en enfermedades crónicas, trastornos autoinmunes y desequilibrios hormonales. Está comprometido con el aprendizaje continuo y la integración de las últimas investigaciones científicas en su práctica para ofrecer la mejor atención posible a sus pacientes.'
@@ -168,7 +168,7 @@ export const initializeDatabase = async () => {
 
     await client.query(`
         INSERT INTO services (name, description, image_url, duration, price, detailed_info) VALUES
-        ('Acupuntura', 'Técnica de curación milenaria que utiliza agujas finas para restaurar el equilibrio, aliviar el dolor y promover el bienestar general.', 'https://raw.githubusercontent.com/lezerquera/dr-zerquera-app/main/assets/service-acupuncture.jpeg', '45-60 minutos', 'Consultar', '{
+        ('Acupuntura', 'Técnica de curación milenaria que utiliza agujas finas para restaurar el equilibrio, aliviar el dolor y promover el bienestar general.', '/assets/servicio-acupuntura.webp', '45-60 minutos', 'Consultar', '{
             "title": "Acupuntura: Curación Milenaria",
             "benefits": ["Alivio efectivo del dolor agudo y crónico.", "Reducción significativa del estrés y la ansiedad.", "Mejora de la calidad del sueño.", "Fortalecimiento del sistema inmunológico."],
             "treats": ["Dolor de espalda y cuello", "Migrañas y cefaleas tensionales.", "Artritis y lesiones deportivas.", "Insomnio y fatiga."],
@@ -176,7 +176,7 @@ export const initializeDatabase = async () => {
             "frequency": "Sesiones semanales o quincenales según la condición.",
             "safety": "Procedimiento muy seguro, realizado con agujas estériles de un solo uso."
         }'),
-        ('Medicina Oriental', 'Enfoque integral que combina diagnóstico tradicional chino con técnicas modernas para tratar la causa raíz de las enfermedades.', 'https://raw.githubusercontent.com/lezerquera/dr-zerquera-app/main/assets/service-oriental-medicine.jpeg', '60 minutos', 'Consultar', '{
+        ('Medicina Oriental', 'Enfoque integral que combina diagnóstico tradicional chino con técnicas modernas para tratar la causa raíz de las enfermedades.', '/assets/servicio-medicina-oriental.webp', '60 minutos', 'Consultar', '{
             "title": "Medicina Oriental: Sabiduría Ancestral para la Salud Moderna",
             "benefits": ["Tratamiento holístico que aborda cuerpo, mente y espíritu.", "Identificación de desequilibrios energéticos subyacentes.", "Planes de tratamiento que pueden incluir acupuntura, hierbas y dieta.", "Prevención de enfermedades futuras fortaleciendo el sistema."],
             "treats": ["Amplia gama de condiciones agudas y crónicas.", "Desórdenes digestivos y respiratorios.", "Problemas de salud mental y emocional.", "Desequilibrios hormonales y ginecológicos."],
@@ -184,7 +184,7 @@ export const initializeDatabase = async () => {
             "frequency": "Consultas regulares para ajustar el tratamiento.",
             "safety": "Enfoque seguro y natural, adaptado a cada individuo."
         }'),
-        ('Medicina Funcional', 'Enfoque personalizado que identifica y trata las causas fundamentales de las enfermedades crónicas.', 'https://raw.githubusercontent.com/lezerquera/dr-zerquera-app/main/assets/service-functional-medicine.jpeg', '90 minutos', 'Consultar', '{
+        ('Medicina Funcional', 'Enfoque personalizado que identifica y trata las causas fundamentales de las enfermedades crónicas.', '/assets/servicio-medicina-funcional.webp', '90 minutos', 'Consultar', '{
             "title": "Medicina Funcional: Tratando la Causa, no solo el Síntoma",
             "benefits": ["Investigación profunda de las causas raíz de la enfermedad.", "Uso de pruebas de laboratorio avanzadas.", "Planes de tratamiento altamente personalizados.", "Enfoque en nutrición, estilo de vida y genética."],
             "treats": ["Enfermedades autoinmunes y crónicas.", "Fatiga crónica y fibromialgia.", "Problemas metabólicos y de peso.", "Salud intestinal y desequilibrios hormonales."],
@@ -192,7 +192,7 @@ export const initializeDatabase = async () => {
             "frequency": "Consulta inicial intensiva con seguimientos periódicos.",
             "safety": "Basado en la ciencia, centrado en el paciente y la prevención."
         }'),
-        ('Medicina Ortomolecular', 'Tratamiento que utiliza nutrientes en dosis terapéuticas para restaurar el equilibrio bioquímico óptimo.', 'https://raw.githubusercontent.com/lezerquera/dr-zerquera-app/main/assets/service-orthomolecular.jpeg', '60 minutos', 'Consultar', '{
+        ('Medicina Ortomolecular', 'Tratamiento que utiliza nutrientes en dosis terapéuticas para restaurar el equilibrio bioquímico óptimo.', '/assets/servicio-medicina-ortomolecular.webp', '60 minutos', 'Consultar', '{
             "title": "Medicina Ortomolecular: Nutrición para la Sanación Celular",
             "benefits": ["Corrección de deficiencias nutricionales específicas.", "Optimización de la función celular y metabólica.", "Uso de vitaminas, minerales y aminoácidos en dosis terapéuticas.", "Apoyo integral a la salud y prevención de enfermedades."],
             "treats": ["Estrés oxidativo y envejecimiento prematuro.", "Apoyo al sistema inmunológico.", "Mejora del rendimiento mental y físico.", "Condiciones crónicas relacionadas con deficiencias nutricionales."],
@@ -200,7 +200,7 @@ export const initializeDatabase = async () => {
             "frequency": "Consultas para establecer y ajustar el plan de nutrientes.",
             "safety": "Seguro bajo supervisión médica para garantizar dosis adecuadas."
         }'),
-        ('Medicina Homeopática', 'Sistema de medicina natural que estimula la capacidad innata del cuerpo para curarse a sí mismo.', 'https://raw.githubusercontent.com/lezerquera/dr-zerquera-app/main/assets/service-homeopathic.jpeg', '75 minutos', 'Consultar', '{
+        ('Medicina Homeopática', 'Sistema de medicina natural que estimula la capacidad innata del cuerpo para curarse a sí mismo.', '/assets/servicio-medicina-homeopatica.webp', '75 minutos', 'Consultar', '{
             "title": "Medicina Homeopática: Estímulo Natural para la Autocuración",
             "benefits": ["Tratamiento suave, no tóxico y sin efectos secundarios.", "Enfoque individualizado basado en la totalidad de los síntomas.", "Fortalece la respuesta vital del propio cuerpo.", "Adecuado para todas las edades, incluyendo niños y ancianos."],
             "treats": ["Afecciones agudas como resfriados, gripes y alergias.", "Problemas crónicos de la piel, digestivos y emocionales.", "Trastornos del sueño y estrés.", "Apoyo general al bienestar y la vitalidad."],
@@ -208,7 +208,7 @@ export const initializeDatabase = async () => {
             "frequency": "Varía según si la condición es aguda o crónica.",
             "safety": "Extremadamente seguro, utilizando remedios altamente diluidos."
         }'),
-        ('Consulta de Nutrición TCM', 'Orientación personalizada sobre el uso de principios de la Medicina Tradicional China para optimizar la salud a través de la nutrición adecuada.', 'https://raw.githubusercontent.com/lezerquera/dr-zerquera-app/main/assets/service-nutrition.jpeg', '45 minutos', 'Consultar', '{
+        ('Consulta de Nutrición TCM', 'Orientación personalizada sobre el uso de principios de la Medicina Tradicional China para optimizar la salud a través de la nutrición adecuada.', '/assets/servicio-nutricion.webp', '45 minutos', 'Consultar', '{
             "title": "Nutrición TCM: Alimentación para el Equilibrio Energético",
             "benefits": ["Plan de alimentación basado en su constitución y diagnóstico TCM.", "Uso de las propiedades energéticas de los alimentos (frío, caliente, etc.).", "Mejora de la digestión y la absorción de nutrientes.", "Armonización del flujo de Qi (energía vital) en el cuerpo."],
             "treats": ["Problemas digestivos como hinchazón, gases y digestión lenta.", "Fatiga, falta de energía y debilidad.", "Desequilibrios de peso.", "Apoyo nutricional para condiciones crónicas."],
@@ -216,15 +216,7 @@ export const initializeDatabase = async () => {
             "frequency": "Consulta inicial con seguimientos para ajustar el plan.",
             "safety": "Enfoque natural y personalizado, basado en principios milenarios."
         }'),
-        ('Fisioterapia', 'Ejercicios personalizados y técnicas manuales para optimizar el movimiento, reducir el dolor y mejorar la función física.', 'https://raw.githubusercontent.com/lezerquera/dr-zerquera-app/main/assets/service-physiotherapy.jpeg', '45 minutos', 'Consultar', '{
-            "title": "Fisioterapia: Recupera tu Movimiento y Vitalidad",
-            "benefits": ["Reducción del dolor y la inflamación.", "Mejora de la movilidad, fuerza y flexibilidad.", "Recuperación acelerada de lesiones y cirugías.", "Prevención de futuras lesiones y mejora del rendimiento."],
-            "treats": ["Lesiones deportivas (esguinces, distensiones).", "Dolor de espalda, cuello y articulaciones.", "Rehabilitación postoperatoria.", "Limitaciones de movilidad y rigidez."],
-            "process": ["Evaluación funcional completa para identificar la causa del problema.", "Diseño de un plan de ejercicios terapéuticos personalizado.", "Aplicación de terapia manual, estiramientos y otras modalidades.", "Educación del paciente sobre postura y mecánica corporal."],
-            "frequency": "Sesiones regulares basadas en el plan de rehabilitación.",
-            "safety": "Terapia segura y efectiva, guiada por un profesional cualificado."
-        }'),
-        ('Terapia de Ozono en Acupuntos', 'Aplicación dirigida de ozono en puntos de acupuntura para mejorar la curación, apoyar el sistema inmunológico y aliviar el dolor.', 'https://raw.githubusercontent.com/lezerquera/dr-zerquera-app/main/assets/service-ozone.jpeg', '30 minutos', 'Consultar', '{
+        ('Terapia de Ozono en Acupuntos', 'Aplicación dirigida de ozono en puntos de acupuntura para mejorar la curación, apoyar el sistema inmunológico y aliviar el dolor.', '/assets/servicio-terapia-de-ozono.webp', '30 minutos', 'Consultar', '{
             "title": "Terapia de Ozono: Oxigenación y Sanación Potenciada",
             "benefits": ["Potente efecto antiinflamatorio y analgésico.", "Mejora de la oxigenación y circulación en los tejidos.", "Estimulación del sistema inmunológico y acción antimicrobiana.", "Acelera la reparación y regeneración de tejidos."],
             "treats": ["Dolor articular y muscular crónico.", "Hernias discales y ciática.", "Fibromialgia.", "Heridas de difícil cicatrización e infecciones localizadas."],
@@ -232,7 +224,7 @@ export const initializeDatabase = async () => {
             "frequency": "Serie de tratamientos, generalmente semanales.",
             "safety": "Seguro cuando es administrado por un profesional capacitado."
         }'),
-        ('Terapia de Inyección', 'Utilización de inyecciones especializadas para administrar sustancias naturales para el alivio dirigido del dolor y la regeneración de tejidos.', 'https://raw.githubusercontent.com/lezerquera/dr-zerquera-app/main/assets/service-injection.jpeg', '30 minutos', 'Consultar', '{
+        ('Terapia de Inyección', 'Utilización de inyecciones especializadas para administrar sustancias naturales para el alivio dirigido del dolor y la regeneración de tejidos.', '/assets/servicio-terapia-de-inyeccion.webp', '30 minutos', 'Consultar', '{
             "title": "Terapia de Inyección: Alivio Dirigido y Regeneración",
             "benefits": ["Administración precisa de agentes terapéuticos en el sitio de la lesión.", "Alivio rápido y localizado del dolor.", "Estimulación de los procesos naturales de curación del cuerpo.", "Alternativa mínimamente invasiva a procedimientos más complejos."],
             "treats": ["Dolor en articulaciones (rodilla, hombro, etc.).", "Puntos gatillo miofasciales.", "Lesiones de tendones y ligamentos.", "Neuralgias y dolor de nervios periféricos."],
@@ -240,7 +232,7 @@ export const initializeDatabase = async () => {
             "frequency": "Generalmente se requieren varias sesiones espaciadas.",
             "safety": "Procedimiento seguro realizado en un entorno clínico."
         }'),
-        ('Consulta Herbal TCM', 'Asesoramiento experto sobre la incorporación de la Medicina Herbal China Tradicional para objetivos personalizados de salud y bienestar.', 'https://raw.githubusercontent.com/lezerquera/dr-zerquera-app/main/assets/service-herbal.jpeg', '60 minutos', 'Consultar', '{
+        ('Consulta Herbal TCM', 'Asesoramiento experto sobre la incorporación de la Medicina Herbal China Tradicional para objetivos personalizados de salud y bienestar.', '/assets/servicio-consulta-herbal.webp', '60 minutos', 'Consultar', '{
             "title": "Consulta Herbal TCM: El Poder Curativo de la Naturaleza",
             "benefits": ["Fórmulas personalizadas para tratar su patrón de desequilibrio específico.", "Apoyo natural para una amplia variedad de condiciones de salud.", "Menos efectos secundarios que muchos medicamentos convencionales.", "Trabaja en sinergia con otros tratamientos como la acupuntura."],
             "treats": ["Problemas digestivos, respiratorios y ginecológicos.", "Manejo del estrés, la ansiedad y el insomnio.", "Fortalecimiento del sistema inmunológico.", "Mejora de la energía y la vitalidad general."],
