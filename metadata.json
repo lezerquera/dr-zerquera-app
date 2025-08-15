@@ -1,0 +1,5 @@
+{
+  "name": "Dr. Zerquera - Gestión Médica",
+  "description": "Una aplicación web moderna para la gestión de clínicas médicas, que permite a los pacientes reservar citas y comunicarse con los médicos, y a los administradores gestionar los servicios, el personal y la información de la clínica.",
+  "requestFramePermissions": []
+}
