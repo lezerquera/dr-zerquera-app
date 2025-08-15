@@ -1,4 +1,5 @@
-import express from 'express';
+
+import express, { Request, Response } from 'express';
 import cors, { CorsOptions } from 'cors';
 import dotenv from 'dotenv';
 import pool from './db';
@@ -24,8 +25,12 @@ const allowedOrigins: string[] = [
 
 // Si la URL del frontend está definida en el entorno (producción), la añadimos a la lista blanca.
 if (process.env.FRONTEND_URL) {
-    allowedOrigins.push(process.env.FRONTEND_URL);
-    console.log(`CORS: Production frontend URL added to allowed origins: ${process.env.FRONTEND_URL}`);
+    // Normalizamos la URL para eliminar una posible barra final ('/'), que es un error común.
+    const frontendUrl = process.env.FRONTEND_URL.endsWith('/')
+        ? process.env.FRONTEND_URL.slice(0, -1)
+        : process.env.FRONTEND_URL;
+    allowedOrigins.push(frontendUrl);
+    console.log(`CORS: Production frontend URL added to allowed origins: ${frontendUrl}`);
 }
 
 const corsOptions: CorsOptions = {
@@ -54,12 +59,12 @@ app.use('/api/appointments', appointmentsRouter);
 app.use('/api/chat-messages', chatMessagesRouter);
 app.use('/api/insurances', insurancesRouter);
 
-app.get('/api', (req: express.Request, res: express.Response) => {
+app.get('/api', (req: Request, res: Response) => {
     res.send('ZIMI Backend API is running!');
 });
 
 // Endpoint secreto para inicializar la BD
-app.get('/api/setup/init-database-super-secret-key', async (req: express.Request, res: express.Response) => {
+app.get('/api/setup/init-database-super-secret-key', async (req: Request, res: Response) => {
     console.log('Received request to initialize database...');
     try {
         await initializeDatabase();
@@ -71,7 +76,7 @@ app.get('/api/setup/init-database-super-secret-key', async (req: express.Request
 });
 
 
-app.get('/api/health', async (req: express.Request, res: express.Response) => {
+app.get('/api/health', async (req: Request, res: Response) => {
     try {
         await pool.query('SELECT 1');
         res.status(200).send('Backend and database connection are healthy.');

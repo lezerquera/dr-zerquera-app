@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import pool from '../db';
 import type { Service } from '../shared/types';
 import { verifyToken, isAdmin } from '../middleware/auth';
@@ -17,7 +17,7 @@ const selectServiceQuery = `
 `;
 
 // GET /api/services (Public)
-router.get('/', async (req: express.Request, res: express.Response) => {
+router.get('/', async (req: Request, res: Response) => {
     try {
         const result = await pool.query(`${selectServiceQuery} ORDER BY id`);
         res.json(result.rows);
@@ -28,7 +28,7 @@ router.get('/', async (req: express.Request, res: express.Response) => {
 });
 
 // POST /api/services (Admin only)
-router.post('/', verifyToken, isAdmin, async (req: express.Request, res: express.Response) => {
+router.post('/', verifyToken, isAdmin, async (req: Request, res: Response) => {
     const { name, description, imageUrl, duration, price, detailedInfo } = req.body as Service;
     try {
         const result = await pool.query(
@@ -44,7 +44,7 @@ router.post('/', verifyToken, isAdmin, async (req: express.Request, res: express
 });
 
 // PUT /api/services/:id (Admin only)
-router.put('/:id', verifyToken, isAdmin, async (req: express.Request, res: express.Response) => {
+router.put('/:id', verifyToken, isAdmin, async (req: Request, res: Response) => {
     const serviceId = parseInt(req.params.id);
     const { name, description, imageUrl, duration, price, detailedInfo } = req.body as Service;
     try {
@@ -65,7 +65,7 @@ router.put('/:id', verifyToken, isAdmin, async (req: express.Request, res: expre
 });
 
 // DELETE /api/services/:id (Admin only)
-router.delete('/:id', verifyToken, isAdmin, async (req: express.Request, res: express.Response) => {
+router.delete('/:id', verifyToken, isAdmin, async (req: Request, res: Response) => {
     const serviceId = parseInt(req.params.id);
     try {
         await pool.query('DELETE FROM services WHERE id = $1', [serviceId]);

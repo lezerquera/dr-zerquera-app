@@ -1,11 +1,12 @@
-import express from 'express';
+
+import express, { Request, Response } from 'express';
 import pool from '../db';
 import { verifyToken } from '../middleware/auth';
 
 const router: express.Router = express.Router();
 
 // GET /api/chat-messages
-router.get('/', verifyToken, async (req: express.Request, res: express.Response) => {
+router.get('/', verifyToken, async (req: Request, res: Response) => {
     try {
         const result = await pool.query('SELECT c.id, u.name as sender, c.sender_role as "senderRole", c.text, to_char(c.timestamp, \'HH:MI AM\') as timestamp FROM chat_messages c JOIN users u ON c.sender_id = u.id ORDER BY c.id ASC');
         res.json(result.rows);
@@ -16,7 +17,7 @@ router.get('/', verifyToken, async (req: express.Request, res: express.Response)
 });
 
 // POST /api/chat-messages
-router.post('/', verifyToken, async (req: express.Request, res: express.Response) => {
+router.post('/', verifyToken, async (req: Request, res: Response) => {
     const { text } = req.body;
     const senderId = req.user?.id;
     const senderRole = req.user?.role;

@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import pool from '../db';
 import { verifyToken, isAdmin } from '../middleware/auth';
 
@@ -21,7 +21,7 @@ const selectAppointmentQuery = `
 `;
 
 // GET /api/appointments
-router.get('/', verifyToken, isAdmin, async (req: express.Request, res: express.Response) => {
+router.get('/', verifyToken, isAdmin, async (req: Request, res: Response) => {
     try {
         const result = await pool.query(`${selectAppointmentQuery} ORDER BY a.id DESC`);
         res.json(result.rows);
@@ -32,7 +32,7 @@ router.get('/', verifyToken, isAdmin, async (req: express.Request, res: express.
 });
 
 // POST /api/appointments (Public)
-router.post('/', verifyToken, async (req: express.Request, res: express.Response) => {
+router.post('/', verifyToken, async (req: Request, res: Response) => {
     const { patientName, patientPhone, patientEmail, serviceId, urgency, reason } = req.body;
     const patientId = req.user?.id;
     
@@ -61,7 +61,7 @@ router.post('/', verifyToken, async (req: express.Request, res: express.Response
 });
 
 // PUT /api/appointments/:id/confirm
-router.put('/:id/confirm', verifyToken, isAdmin, async (req: express.Request, res: express.Response) => {
+router.put('/:id/confirm', verifyToken, isAdmin, async (req: Request, res: Response) => {
     const appointmentId = parseInt(req.params.id);
 
     try {
