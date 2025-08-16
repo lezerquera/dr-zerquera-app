@@ -306,7 +306,7 @@ const ServicesManager = ({ services, saveService, deleteService }: Pick<AdminVie
 
 const ServiceFormModal = ({ service, onSave, onClose }: { service: Service | null, onSave: (service: Service) => void, onClose: () => void }) => {
     const [formData, setFormData] = useState<Service>(
-        service || { id: 0, name: '', description: '', imageUrl: '', duration: '', price: '', detailedInfo: { title: '', benefits: [], treats: [], process: [], frequency: '', safety: '' } }
+        service || { id: 0, name: '', description: '', imageUrl: '', duration: '', price: '', detailedInfo: { title: '', benefits: [], treats: [], process: [], frequency: '' } }
     );
     const [isSaving, setIsSaving] = useState(false);
     
@@ -407,14 +407,10 @@ const ServiceFormModal = ({ service, onSave, onClose }: { service: Service | nul
                     <label htmlFor="process" className="block text-sm font-medium text-main dark:text-main">Proceso (uno por línea)</label>
                     <textarea name="process" id="process" rows={3} value={arrayToString(formData.detailedInfo.process)} onChange={handleDetailedInfoChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-main"/>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                     <div>
                         <label htmlFor="frequency" className="block text-sm font-medium text-main dark:text-main">Frecuencia</label>
                         <input type="text" name="frequency" id="frequency" value={formData.detailedInfo.frequency} onChange={handleDetailedInfoChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-main"/>
-                    </div>
-                    <div>
-                        <label htmlFor="safety" className="block text-sm font-medium text-main dark:text-main">Seguridad</label>
-                        <input type="text" name="safety" id="safety" value={formData.detailedInfo.safety} onChange={handleDetailedInfoChange} className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-main"/>
                     </div>
                 </div>
 

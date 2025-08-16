@@ -14,7 +14,7 @@
     "start": "npm run build && node dist/local.js",
     "predev": "npm run prebuild",
     "dev": "npx nodemon --exec \"node -r ts-node/register src/local.ts\"",
-    "db:init": "npx ts-node src/init-db.ts"
+    "db:init": "node -r ts-node/register src/init-db.ts"
   },
   "dependencies": {
     "@types/bcryptjs": "^2.4.6",

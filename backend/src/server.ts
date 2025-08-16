@@ -1,6 +1,6 @@
-
-import express, { Request, Response } from 'express';
-import cors, { CorsOptions } from 'cors';
+import express from 'express';
+import { Request, Response } from 'express';
+import cors from 'cors';
 import dotenv from 'dotenv';
 import pool from './db';
 import { clinicInfoRouter } from './api/clinic';
@@ -15,7 +15,7 @@ import { initializeDatabase } from './init-db'; // Importar la función
 
 dotenv.config();
 
-const app: express.Express = express();
+const app = express();
 const port = process.env.PORT || 3001;
 
 // --- Configuración de CORS Explícita y Segura ---
@@ -33,7 +33,7 @@ if (process.env.FRONTEND_URL) {
     console.log(`CORS: Production frontend URL added to allowed origins: ${frontendUrl}`);
 }
 
-const corsOptions: CorsOptions = {
+const corsOptions: cors.CorsOptions = {
     origin: (origin, callback) => {
         // Permitir peticiones sin 'origin' (como las de Postman o apps móviles) o si el origen está en nuestra lista blanca.
         if (!origin || allowedOrigins.includes(origin)) {
@@ -63,9 +63,22 @@ app.get('/api', (req: Request, res: Response) => {
     res.send('ZIMI Backend API is running!');
 });
 
-// Endpoint secreto para inicializar la BD
-app.get('/api/setup/init-database-super-secret-key', async (req: Request, res: Response) => {
-    console.log('Received request to initialize database...');
+// Endpoint seguro para inicializar la BD, protegido por una variable de entorno.
+app.get('/api/setup/init-database', async (req: Request, res: Response) => {
+    const secretKey = process.env.INIT_DB_SECRET_KEY;
+    const providedKey = req.query.key;
+
+    if (!secretKey || secretKey.length < 10) {
+        console.error('CRITICAL: INIT_DB_SECRET_KEY is not set or is too short. The database initialization endpoint is disabled.');
+        return res.status(500).send('❌ Endpoint de inicialización no configurado de forma segura en el servidor.');
+    }
+    
+    if (providedKey !== secretKey) {
+        console.warn(`SECURITY: Failed attempt to access init-database endpoint with wrong key: ${providedKey}`);
+        return res.status(403).send('❌ Clave secreta no válida.');
+    }
+
+    console.log('Received authorized request to initialize database...');
     try {
         await initializeDatabase();
         res.status(200).send('✅ Base de datos inicializada con éxito. ¡Ya puedes cerrar esta ventana!');

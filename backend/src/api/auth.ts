@@ -1,14 +1,15 @@
-import express, { Router } from 'express';
+import express from 'express';
+import { Request, Response } from 'express';
 import * as bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
 import pool from '../db';
 import type { User } from '../shared/types';
 
-const router: Router = express.Router();
+const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-default-secret-key-that-is-long-and-secure';
 
 // POST /api/auth/register
-router.post('/register', async (req, res) => {
+router.post('/register', async (req: Request, res: Response) => {
     const { email, password, name } = req.body;
 
     if (!email || !password || !name) {
@@ -41,7 +42,7 @@ router.post('/register', async (req, res) => {
 });
 
 // POST /api/auth/login
-router.post('/login', async (req, res) => {
+router.post('/login', async (req: Request, res: Response) => {
     const { email, password } = req.body;
 
     if (!email || !password) {

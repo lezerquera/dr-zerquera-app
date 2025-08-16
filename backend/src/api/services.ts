@@ -1,9 +1,10 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
+import { Request, Response } from 'express';
 import pool from '../db';
 import type { Service } from '../shared/types';
 import { verifyToken, isAdmin } from '../middleware/auth';
 
-const router: express.Router = express.Router();
+const router = express.Router();
 
 const selectServiceQuery = `
     SELECT id,
@@ -63,18 +64,5 @@ router.put('/:id', verifyToken, isAdmin, async (req: Request, res: Response) => 
         res.status(500).json({ error: 'Internal server error' });
     }
 });
-
-// DELETE /api/services/:id (Admin only)
-router.delete('/:id', verifyToken, isAdmin, async (req: Request, res: Response) => {
-    const serviceId = parseInt(req.params.id);
-    try {
-        await pool.query('DELETE FROM services WHERE id = $1', [serviceId]);
-        res.status(204).send();
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
 
 export { router as servicesRouter };

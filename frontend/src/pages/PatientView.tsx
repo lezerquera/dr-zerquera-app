@@ -208,10 +208,6 @@ const ServicesList = ({ services, clinicInfo }: { services: Service[], clinicInf
                                     <span className="text-muted dark:text-muted font-medium">Duración:</span>
                                     <span className="font-semibold text-main dark:text-main">{service.duration}</span>
                                 </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-muted dark:text-muted font-medium">Precio:</span>
-                                    <span className="font-semibold text-main dark:text-main">{service.price}</span>
-                                </div>
                             </div>
 
                             <div className="mt-auto pt-4 flex gap-4">
@@ -281,7 +277,7 @@ const ServiceDetailModal = ({ service, clinicInfo, onClose }: { service: Service
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 my-8 text-center">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 my-8 text-center">
                     <div className="p-4 bg-bg-alt dark:bg-bg-alt rounded-lg flex flex-col items-center justify-center">
                         <ClockIcon className="w-8 h-8 mb-2 text-accent-turquoise"/>
                         <h4 className="font-bold">Duración</h4>
@@ -291,11 +287,6 @@ const ServiceDetailModal = ({ service, clinicInfo, onClose }: { service: Service
                         <CalendarIcon className="w-8 h-8 mb-2 text-accent-turquoise"/>
                         <h4 className="font-bold">Frecuencia</h4>
                         <p className="text-muted dark:text-main/80">{detailedInfo.frequency}</p>
-                    </div>
-                    <div className="p-4 bg-bg-alt dark:bg-bg-alt rounded-lg flex flex-col items-center justify-center">
-                        <ShieldIcon className="w-8 h-8 mb-2 text-accent-turquoise"/>
-                        <h4 className="font-bold">Seguridad</h4>
-                        <p className="text-muted dark:text-main/80">{detailedInfo.safety}</p>
                     </div>
                 </div>
 

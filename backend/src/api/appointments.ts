@@ -1,8 +1,9 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
+import { Request, Response } from 'express';
 import pool from '../db';
 import { verifyToken, isAdmin } from '../middleware/auth';
 
-const router: express.Router = express.Router();
+const router = express.Router();
 
 const selectAppointmentQuery = `
     SELECT a.id,
@@ -15,9 +16,8 @@ const selectAppointmentQuery = `
            a.status,
            a.appointment_date  AS "date",
            a.appointment_time  AS "time",
-           row_to_json(s.*)    AS service
+           (SELECT row_to_json(s) FROM (SELECT id, name, description, image_url as "imageUrl", duration, price, detailed_info as "detailedInfo" FROM services WHERE id = a.service_id) s) as service
     FROM appointments a
-    JOIN services s ON a.service_id = s.id
 `;
 
 // GET /api/appointments
@@ -31,65 +31,73 @@ router.get('/', verifyToken, isAdmin, async (req: Request, res: Response) => {
     }
 });
 
-// POST /api/appointments (Public)
+// POST /api/appointments (Authenticated users)
 router.post('/', verifyToken, async (req: Request, res: Response) => {
     const { patientName, patientPhone, patientEmail, serviceId, urgency, reason } = req.body;
     const patientId = req.user?.id;
-    
-    if (!patientName || !serviceId || !urgency || !reason) {
-        return res.status(400).json({ error: 'Missing required fields' });
+
+    if (!patientName || !patientPhone || !patientEmail || !serviceId || !urgency || !reason) {
+        return res.status(400).json({ error: 'Missing required appointment data.' });
     }
 
     try {
-        const result = await pool.query(
+        const insertResult = await pool.query(
             `INSERT INTO appointments (patient_id, patient_name, patient_phone, patient_email, service_id, urgency, reason, status)
              VALUES ($1, $2, $3, $4, $5, $6, $7, 'Solicitada')
              RETURNING id`,
             [patientId, patientName, patientPhone, patientEmail, serviceId, urgency, reason]
         );
         
-        const newAppointmentResult = await pool.query(
-            `${selectAppointmentQuery} WHERE a.id = $1`,
-            [result.rows[0].id]
-        );
+        const newAppointmentId = insertResult.rows[0].id;
 
-        res.status(201).json(newAppointmentResult.rows[0]);
+        const finalResult = await pool.query(`${selectAppointmentQuery} WHERE a.id = $1`, [newAppointmentId]);
+        
+        if (finalResult.rows.length === 0) {
+             return res.status(404).json({ error: 'Could not retrieve the created appointment.' });
+        }
+
+        res.status(201).json(finalResult.rows[0]);
     } catch (err) {
-        console.error(err);
+        console.error('Error creating appointment request:', err);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
 
-// PUT /api/appointments/:id/confirm
+// PUT /api/appointments/:id/confirm (Admin only)
 router.put('/:id/confirm', verifyToken, isAdmin, async (req: Request, res: Response) => {
-    const appointmentId = parseInt(req.params.id);
+    const { id } = req.params;
+    
+    // Set appointment for 7 days from now at 10 AM as a placeholder
+    const appointmentDate = new Date();
+    appointmentDate.setDate(appointmentDate.getDate() + 7);
+    const dateStr = appointmentDate.toISOString().split('T')[0];
+    const timeStr = '10:00:00';
 
     try {
-        const date = new Date().toISOString().split('T')[0]; // Placeholder date
-        const time = '10:00'; // Placeholder time
-
-        const result = await pool.query(
-            `UPDATE appointments
-             SET status = 'Confirmada', appointment_date = $1, appointment_time = $2
-             WHERE id = $3
-             RETURNING id, patient_id AS "patientId"`,
-            [date, time, appointmentId]
+        const updateResult = await pool.query(
+            `UPDATE appointments 
+             SET status = 'Confirmada', appointment_date = $1, appointment_time = $2 
+             WHERE id = $3 RETURNING patient_id`,
+            [dateStr, timeStr, id]
         );
-        
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Appointment not found' });
+
+        if (updateResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Appointment not found.' });
         }
-        
-        const updatedAppointmentResult = await pool.query(
-             `${selectAppointmentQuery} WHERE a.id = $1`,
-            [appointmentId]
-        );
 
-        res.json(updatedAppointmentResult.rows[0]);
+        const finalResult = await pool.query(`${selectAppointmentQuery} WHERE a.id = $1`, [id]);
+        
+        if (finalResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Could not retrieve the updated appointment.' });
+        }
+
+        res.json(finalResult.rows[0]);
+
     } catch (err) {
-        console.error(err);
+        console.error('Error confirming appointment:', err);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+
 
 export { router as appointmentsRouter };

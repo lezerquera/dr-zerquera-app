@@ -1,9 +1,9 @@
-
-import express, { Request, Response } from 'express';
+import express from 'express';
+import { Request, Response } from 'express';
 import pool from '../db';
 import { verifyToken, isAdmin } from '../middleware/auth';
 
-const router: express.Router = express.Router();
+const router = express.Router();
 
 // GET /api/clinic-info (Public)
 router.get('/', async (req: Request, res: Response) => {

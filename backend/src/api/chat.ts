@@ -1,9 +1,9 @@
-
-import express, { Request, Response } from 'express';
+import express from 'express';
+import { Request, Response } from 'express';
 import pool from '../db';
 import { verifyToken } from '../middleware/auth';
 
-const router: express.Router = express.Router();
+const router = express.Router();
 
 // GET /api/chat-messages
 router.get('/', verifyToken, async (req: Request, res: Response) => {
