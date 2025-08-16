@@ -1,5 +1,4 @@
-import express from 'express';
-import { Request, Response } from 'express';
+import express, { Request as ExpressRequest, Response as ExpressResponse } from 'express';
 import pool from '../db';
 import type { Service } from '../shared/types';
 import { verifyToken, isAdmin } from '../middleware/auth';
@@ -18,7 +17,7 @@ const selectServiceQuery = `
 `;
 
 // GET /api/services (Public)
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', async (req: ExpressRequest, res: ExpressResponse) => {
     try {
         const result = await pool.query(`${selectServiceQuery} ORDER BY id`);
         res.json(result.rows);
@@ -29,7 +28,7 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 // POST /api/services (Admin only)
-router.post('/', verifyToken, isAdmin, async (req: Request, res: Response) => {
+router.post('/', verifyToken, isAdmin, async (req: ExpressRequest, res: ExpressResponse) => {
     const { name, description, imageUrl, duration, price, detailedInfo } = req.body as Service;
     try {
         const result = await pool.query(
@@ -45,7 +44,7 @@ router.post('/', verifyToken, isAdmin, async (req: Request, res: Response) => {
 });
 
 // PUT /api/services/:id (Admin only)
-router.put('/:id', verifyToken, isAdmin, async (req: Request, res: Response) => {
+router.put('/:id', verifyToken, isAdmin, async (req: ExpressRequest, res: ExpressResponse) => {
     const serviceId = parseInt(req.params.id);
     const { name, description, imageUrl, duration, price, detailedInfo } = req.body as Service;
     try {
@@ -64,5 +63,48 @@ router.put('/:id', verifyToken, isAdmin, async (req: Request, res: Response) => 
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+
+// DELETE /api/services/:id (Admin only)
+router.delete('/:id', verifyToken, isAdmin, async (req: ExpressRequest, res: ExpressResponse) => {
+    const serviceId = parseInt(req.params.id);
+    const client = await pool.connect(); // Get a client for transaction
+
+    try {
+        await client.query('BEGIN');
+
+        // Paso 1: Desvincular todas las citas asociadas a este servicio.
+        // Esto preserva el historial de citas mientras permite la eliminación del servicio.
+        await client.query(
+            'UPDATE appointments SET service_id = NULL WHERE service_id = $1',
+            [serviceId]
+        );
+
+        // Paso 2: Eliminar el servicio de forma segura ahora que no tiene dependencias.
+        const deleteResult = await client.query('DELETE FROM services WHERE id = $1', [serviceId]);
+        
+        if (deleteResult.rowCount === 0) {
+            // Si no se eliminó ninguna fila, el servicio no existía.
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Servicio no encontrado.' });
+        }
+
+        await client.query('COMMIT');
+        res.status(204).send();
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error("Error deleting service with transaction:", err);
+        const dbError = err as { code?: string; detail?: string };
+        // Aunque ahora lo manejamos manualmente, dejamos este código por si acaso.
+        if (dbError.code === '23503') { // Foreign key violation
+            return res.status(409).json({ 
+                error: 'No se puede eliminar el servicio porque aún tiene datos asociados.' 
+            });
+        }
+        res.status(500).json({ error: 'Error interno del servidor al intentar eliminar el servicio.' });
+    } finally {
+        client.release();
+    }
+});
+
 
 export { router as servicesRouter };
