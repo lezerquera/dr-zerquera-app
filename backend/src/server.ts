@@ -1,4 +1,4 @@
-import express, { Request as ExpressRequest, Response as ExpressResponse } from 'express';
+import express, { Request, Response } from 'express';
 import cors, { CorsOptions } from 'cors';
 import dotenv from 'dotenv';
 import path from 'path'; // Importamos el módulo 'path' de Node.js
@@ -50,14 +50,9 @@ const corsOptions: CorsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
-// --- Servir archivos estáticos del frontend ---
-// Construimos la ruta al directorio de build del frontend para producción.
-const frontendDistPath = path.join(__dirname, '..', 'frontend', 'dist');
-// Servimos los assets (JS, CSS, imágenes, etc.) desde la carpeta 'dist' del frontend.
-app.use(express.static(frontendDistPath));
-
-
-// API Routes
+// --- API Routes ---
+// IMPORTANTE: Las rutas de la API deben registrarse ANTES de servir los archivos estáticos.
+// Esto asegura que las peticiones a /api/* sean manejadas por el backend y no por el frontend.
 app.use('/api/auth', authRouter);
 app.use('/api/clinic-info', clinicInfoRouter);
 app.use('/api/doctor-profile', doctorProfileRouter);
@@ -67,11 +62,11 @@ app.use('/api/chat-messages', chatMessagesRouter);
 app.use('/api/insurances', insurancesRouter);
 app.use('/api/setup', setupRouter); // Ruta de inicialización refactorizada
 
-app.get('/api', (req: ExpressRequest, res: ExpressResponse) => {
+app.get('/api', (req: Request, res: Response) => {
     res.send('ZIMI Backend API is running!');
 });
 
-app.get('/api/health', async (req: ExpressRequest, res: ExpressResponse) => {
+app.get('/api/health', async (req: Request, res: Response) => {
     try {
         await pool.query('SELECT 1');
         res.status(200).send('Backend and database connection are healthy.');
@@ -82,12 +77,27 @@ app.get('/api/health', async (req: ExpressRequest, res: ExpressResponse) => {
 });
 
 
+// --- Servir archivos estáticos del frontend ---
+// Esta sección debe ir DESPUÉS de todas las rutas de la API.
+// __dirname es backend/dist, así que subimos 2 niveles para llegar a la raíz del proyecto.
+const frontendDistPath = path.join(__dirname, '..', '..', 'frontend', 'dist');
+console.log(`Attempting to serve static files from: ${frontendDistPath}`);
+
+// Servimos los assets (JS, CSS, imágenes, etc.) desde la carpeta 'dist' del frontend.
+app.use(express.static(frontendDistPath));
+
+
 // --- Catch-all para servir el index.html del frontend ---
 // Esto es crucial para que el enrutamiento del lado del cliente (React Router) funcione.
 // Cualquier solicitud GET que no coincida con una ruta de API anterior, servirá la app de React.
-// Debe ir DESPUÉS de todas las rutas de la API.
-app.get('*', (req: ExpressRequest, res: ExpressResponse) => {
-    res.sendFile(path.join(frontendDistPath, 'index.html'));
+app.get('*', (req: Request, res: Response) => {
+    const indexPath = path.join(frontendDistPath, 'index.html');
+    res.sendFile(indexPath, (err) => {
+        if (err) {
+            console.error("Could not send index.html:", err);
+            res.status(504).send("Frontend application not found. Check build configuration.");
+        }
+    });
 });
 
 
