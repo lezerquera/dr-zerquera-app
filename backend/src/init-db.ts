@@ -1,3 +1,5 @@
+/// <reference types="node" />
+
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
 import * as bcrypt from 'bcryptjs';
@@ -99,154 +101,201 @@ export const initializeDatabase = async () => {
         reason TEXT,
         status VARCHAR(50),
         appointment_date DATE,
-        appointment_time VARCHAR(50)
+        appointment_time TIME
       );
     `);
-    
+
     await client.query(`
       CREATE TABLE chat_messages (
         id SERIAL PRIMARY KEY,
         sender_id INTEGER REFERENCES users(id),
         sender_role VARCHAR(50),
         text TEXT,
-        "timestamp" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        "timestamp" TIMESTAMPTZ DEFAULT NOW()
       );
     `);
 
     await client.query(`
       CREATE TABLE insurances (
-        id VARCHAR(50) PRIMARY KEY,
+        id VARCHAR(255) PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
-        brand_color VARCHAR(7) NOT NULL
+        brand_color VARCHAR(20)
       );
     `);
 
     await client.query(`
       CREATE TABLE accepted_insurances (
-        insurance_id VARCHAR(50) PRIMARY KEY REFERENCES insurances(id)
+        insurance_id VARCHAR(255) PRIMARY KEY REFERENCES insurances(id)
       );
     `);
-
+    
     console.log('Tables created successfully.');
-
-    console.log('Seeding data...');
     
-    const adminPassword = process.env.ADMIN_PASSWORD || '1234';
+    console.log('Inserting initial data...');
+
+    // Seed Admin User
+    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
     const adminPasswordHash = await bcrypt.hash(adminPassword, 10);
+    await client.query(`
+        INSERT INTO users (email, password_hash, role, name) VALUES
+        ('admin@zimi.health', $1, 'admin', 'Admin User')
+    `, [adminPasswordHash]);
+    console.log('Admin user seeded.');
+
+
+    await client.query(`
+        INSERT INTO clinic_info (id, name, address, phone, email, website) VALUES
+        (1, 'Zerquera Integrative Medical Institute', '8240 SW 40th St, Miami, FL 33155', '+1 (305) 274-4351', 'info@zimi.health', 'zimi.health')
+        ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, address = EXCLUDED.address, phone = EXCLUDED.phone, email = EXCLUDED.email, website = EXCLUDED.website;
+    `);
+
+    await client.query(`
+      INSERT INTO doctor_profile (id, name, titles, photo_url, introduction, specialties, experience) VALUES
+      (1, 'Dr. Pablo J. Zerquera', 'MD, FACP', '/assets/dr-zerquera.webp',
+      'El Dr. Pablo J. Zerquera es un médico internista con más de 20 años de experiencia, certificado por la junta, que se especializa en medicina integrativa. Su enfoque combina la medicina convencional con terapias complementarias basadas en la evidencia para tratar a la persona en su totalidad, no solo los síntomas. El Dr. Zerquera cree firmemente en la creación de planes de tratamiento personalizados que aborden las causas fundamentales de la enfermedad y promuevan el bienestar a largo plazo, capacitando a sus pacientes para que tomen un papel activo en su propia salud.',
+      '{"Medicina Interna", "Medicina Integrativa", "Acupuntura Médica", "Manejo del Dolor Crónico", "Salud Digestiva", "Prevención y Bienestar"}',
+      'Con una distinguida carrera que abarca más de dos décadas, el Dr. Zerquera ha servido como médico de atención primaria y consultor en diversos entornos clínicos. Ha completado una formación avanzada en acupuntura médica y medicina funcional. Su experiencia radica en el diagnóstico y tratamiento de condiciones médicas complexas, con un interés particular en enfermedades crónicas, trastornos autoinmunes y desequilibrios hormonales. Está comprometido con el aprendizaje continuo y la integración de las últimas investigaciones científicas en su práctica para ofrecer la mejor atención posible a sus pacientes.'
+      ) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, titles = EXCLUDED.titles, photo_url = EXCLUDED.photo_url, introduction = EXCLUDED.introduction, specialties = EXCLUDED.specialties, experience = EXCLUDED.experience;
+    `);
     
-    await client.query(
-      `INSERT INTO users (email, password_hash, role, name) VALUES ($1, $2, 'admin', 'Admin')`,
-      ['admin@zimi.com', adminPasswordHash]
-    );
+    await client.query(`
+        INSERT INTO education (doctor_id, degree, institution, location) VALUES
+        (1, 'Doctor en Medicina (MD)', 'Universidad de Miami Miller School of Medicine', 'Miami, FL'),
+        (1, 'Residencia en Medicina Interna', 'Jackson Memorial Hospital', 'Miami, FL'),
+        (1, 'Fellow of the American College of Physicians (FACP)', 'American College of Physicians', 'Filadelfia, PA'),
+        (1, 'Certificación en Acupuntura Médica para Médicos', 'Helms Medical Institute', 'Berkeley, CA');
+    `);
 
-    const patientPassword = '1234';
-    const patientPasswordHash = await bcrypt.hash(patientPassword, 10);
-
-     await client.query(
-      `INSERT INTO users (email, password_hash, role, name) VALUES ($1, $2, 'patient', 'Paciente ZIMI')`,
-      ['paciente@zimi.com', patientPasswordHash]
-    );
-
-    await client.query(
-      `INSERT INTO clinic_info (id, name, address, phone, email, website) VALUES 
-      (1, 'Zerquera Integrative Medical Institute', '7821 SW 40th St, Miami, FL 33155', '305-274-4351', 'info@zimi.com', 'www.zimi.com')`
-    );
-
-    await client.query(
-      `INSERT INTO doctor_profile (id, name, titles, photo_url, introduction, specialties, experience) VALUES 
-      (1, 
-      'Dr. Pablo J. Zerquera', 
-      'AP, DOM, L.Ac, MSOM', 
-      '/assets/dr-zerquera-profile.jpg', 
-      'El Dr. Pablo J. Zerquera es un aclamado especialista en Medicina Oriental y Acupuntura, con más de 20 años de experiencia dedicados al tratamiento del dolor y la promoción de la salud integral. Su enfoque combina la sabiduría ancestral de la medicina china con técnicas modernas para ofrecer a sus pacientes un camino hacia el bienestar y la recuperación. Graduado con honores, el Dr. Zerquera es un apasionado defensor de la medicina integrativa, buscando siempre la raíz de los problemas de salud para proporcionar soluciones duraderas y efectivas. Su misión es empoderar a los pacientes, dándoles las herramientas para vivir una vida más saludable y sin dolor.',
-      '{Acupuntura, Medicina Oriental, Manejo del Dolor, Terapia de Inyección de Puntos, Bienestar Holístico}', 
-      'Con dos décadas de práctica clínica, el Dr. Zerquera ha tratado exitosamente a miles de pacientes con una amplia gama de condiciones, desde dolor crónico y lesiones deportivas hasta estrés y desequilibrios internos. Su experiencia se extiende a través de diversas modalidades de la Medicina Tradicional China, lo que le permite personalizar los tratamientos para satisfacer las necesidades únicas de cada individuo. Ha trabajado en prestigiosas clínicas y es un ponente habitual en conferencias sobre salud integrativa.')`
-    );
-
-    await client.query(
-      `INSERT INTO education (doctor_id, degree, institution, location) VALUES 
-      (1, 'Maestría en Ciencias de la Medicina Oriental', 'Acupuncture and Massage College', 'Miami, FL'),
-      (1, 'Diplomado en Acupuntura (NCCAOM)', 'National Certification Commission for Acupuncture and Oriental Medicine', 'USA'),
-      (1, 'Licenciado en Ciencias de la Salud', 'Florida International University', 'Miami, FL')`
-    );
-    
-    await client.query(
-      `INSERT INTO services (id, name, description, image_url, duration, price, detailed_info) VALUES
-      (1, 'Acupuntura', 'Técnica milenaria para aliviar el dolor, reducir el estrés y promover el equilibrio energético del cuerpo mediante la inserción de finas agujas en puntos específicos.', '/assets/servicio-acupuntura.webp', '60 min', '120',
-        '{"title": "Sanación y Equilibrio con Acupuntura", "benefits": ["Alivio efectivo del dolor crónico y agudo.", "Reducción significativa del estrés y la ansiedad.", "Mejora la calidad del sueño y combate el insomnio.", "Fortalece el sistema inmunológico.", "Regula el sistema digestivo y hormonal."], "treats": ["Migrañas y cefaleas", "Dolor de espalda y ciática", "Artritis y dolor articular", "Trastornos digestivos", "Ansiedad y depresión", "Infertilidad"], "process": ["Consulta inicial para evaluar su condición.", "Diagnóstico basado en la Medicina Tradicional China.", "Sesión de acupuntura personalizada y relajante.", "Recomendaciones de seguimiento y estilo de vida."], "frequency": "1-2 sesiones por semana inicialmente", "safety": "Procedimiento seguro con agujas estériles de un solo uso."}'),
-      (2, 'Medicina Oriental', 'Un enfoque holístico para la salud que integra acupuntura, fitoterapia y nutrición para tratar la raíz del desequilibrio.', '/assets/servicio-medicina-oriental.webp', '75 min', '180',
-        '{"title": "Bienestar Integral con Medicina Oriental", "benefits": ["Trata la causa raíz de las enfermedades, no solo los síntomas.", "Enfoque personalizado y holístico para cada paciente.", "Integra múltiples terapias para resultados óptimos.", "Promueve la prevención y la salud a largo plazo."], "treats": ["Condiciones crónicas complejas", "Desequilibrios hormonales", "Fatiga crónica y fibromialgia", "Trastornos autoinmunes"], "process": ["Diagnóstico completo (lengua, pulso, historial).", "Creación de un plan de tratamiento multifacético.", "Sesiones que pueden combinar acupuntura, hierbas y más.", "Seguimiento continuo para ajustar el plan."], "frequency": "Consultas quincenales o mensuales", "safety": "Supervisado por un especialista certificado en Medicina Oriental."}'),
-      (3, 'Medicina Funcional', 'Investigación profunda de las causas subyacentes de la enfermedad, utilizando análisis avanzados para crear un plan de salud personalizado.', '/assets/servicio-medicina-funcional.webp', '90 min', '350',
-        '{"title": "Salud Personalizada con Medicina Funcional", "benefits": ["Identifica y aborda la causa raíz de los problemas de salud.", "Utiliza pruebas de laboratorio avanzadas.", "Planes de tratamiento basados en la bioquímica individual.", "Enfoque en la dieta, estilo de vida y suplementación."], "treats": ["Enfermedades crónicas", "Problemas digestivos (SII, SIBO)", "Trastornos de la tiroides", "Enfermedades autoinmunes", "Optimización de la salud"], "process": ["Análisis exhaustivo de historial y síntomas.", "Solicitud de pruebas funcionales (sangre, saliva, heces).", "Análisis de resultados y creación de un plan detallado.", "Seguimiento para monitorizar el progreso."], "frequency": "Consulta inicial y seguimientos cada 1-2 meses", "safety": "Basado en evidencia científica y datos de laboratorio."}'),
-      (4, 'Medicina Ortomolecular', 'Optimización de la salud a nivel celular mediante la suplementación precisa de vitaminas, minerales y nutrientes esenciales.', '/assets/servicio-medicina-ortomolecular.webp', '60 min', '200',
-        '{"title": "Nutrición Celular con Medicina Ortomolecular", "benefits": ["Corrige deficiencias nutricionales específicas.", "Mejora la energía y la función cognitiva.", "Fortalece el sistema inmunológico.", "Apoya los procesos de desintoxicación del cuerpo."], "treats": ["Fatiga crónica", "Niebla mental", "Prevención de enfermedades", "Apoyo durante tratamientos de cáncer", "Salud cardiovascular"], "process": ["Evaluación nutricional y de estilo de vida.", "Posibles análisis para detectar deficiencias.", "Diseño de un protocolo de suplementación personalizado.", "Ajustes basados en la respuesta del paciente."], "frequency": "Consultas de seguimiento trimestrales", "safety": "Protocolos de suplementación seguros y basados en dosis terapéuticas."}'),
-      (5, 'Medicina Homeopática', 'Tratamiento natural que utiliza remedios altamente diluidos para estimular la capacidad de autocuración del cuerpo.', '/assets/servicio-medicina-homeopatica.webp', '60 min', '150',
-        '{"title": "Estímulo Natural con Medicina Homeopática", "benefits": ["Tratamiento suave, no tóxico y sin efectos secundarios.", "Individualizado para la totalidad de sus síntomas.", "Seguro para niños, embarazadas y ancianos.", "Estimula la propia capacidad de curación del cuerpo."], "treats": ["Alergias", "Problemas de la piel (eccema, psoriasis)", "Trastornos emocionales (ansiedad, pena)", "Enfermedades agudas (gripes, resfriados)", "Problemas infantiles"], "process": ["Entrevista homeopática detallada para entender al individuo.", "Selección del remedio que mejor se adapta a su caso.", "Prescripción del remedio en la potencia y dosis adecuadas.", "Seguimiento para evaluar la respuesta al remedio."], "frequency": "Las consultas se espacian a medida que mejora la salud", "safety": "Remedios naturales regulados, seguros y efectivos."}'),
-      (6, 'Consulta de Nutrición TCM', 'Plan de alimentación personalizado basado en los principios de la Medicina Tradicional China para restaurar el equilibrio y la energía.', '/assets/servicio-nutricion.webp', '60 min', '150',
-        '{"title": "Nutrición y Equilibrio Energético", "benefits": ["Aprende qué alimentos son mejores para tu constitución.", "Mejora la digestión y los niveles de energía.", "Apoya la pérdida de peso de forma sostenible.", "Reduce la inflamación a través de la dieta."], "treats": ["Trastornos digestivos (SII, SIBO)", "Fatiga y baja energía", "Sobrepeso y obesidad", "Enfermedades autoinmunes", "Alergias alimentarias"], "process": ["Análisis detallado de su dieta y estilo de vida actual.", "Diagnóstico energético según la Medicina China.", "Creación de un plan de alimentación personalizado.", "Recomendaciones de recetas y suplementos si es necesario."], "frequency": "Consulta inicial y seguimientos mensuales", "safety": "Enfoque educativo y de apoyo para un cambio de hábitos duradero."}'),
-      (7, 'Terapia de Ozono en Acupuntos', 'Aplicación de ozono medicinal en puntos de acupuntura para oxigenar tejidos, reducir la inflamación y modular el sistema inmune.', '/assets/servicio-terapia-de-ozono.webp', '30 min', '180',
-        '{"title": "Oxigenación y Sanación con Ozonoterapia", "benefits": ["Potente efecto antiinflamatorio y analgésico.", "Mejora la oxigenación y circulación local.", "Acción germicida (antibacteriana, antiviral).", "Modula la respuesta del sistema inmunológico."], "treats": ["Dolor articular crónico (artrosis)", "Hernias discales", "Fibromialgia", "Heridas de difícil cicatrización", "Infecciones crónicas"], "process": ["Se genera ozono medicinal a partir de oxígeno puro.", "Se inyecta una pequeña cantidad en puntos de acupuntura o áreas afectadas.", "El procedimiento es rápido y mínimamente invasivo."], "frequency": "Ciclos de varias sesiones, generalmente semanales", "safety": "Técnica segura cuando es aplicada por un profesional capacitado."}'),
-      (8, 'Terapia de Inyección', 'Administración de soluciones homeopáticas o vitaminas en puntos de acupuntura para potenciar la curación y aliviar el dolor.', '/assets/servicio-terapia-de-inyeccion.webp', '30 min', '150',
-        '{"title": "Alivio Potenciado con Terapia de Inyección", "benefits": ["Acción antiinflamatoria y analgésica directa.", "Resultados más rápidos que la acupuntura sola.", "Estimulación prolongada de los puntos de acupuntura.", "Aporte localizado de nutrientes y remedios naturales."], "treats": ["Dolor agudo por lesiones deportivas", "Espasmos musculares", "Puntos gatillo (Trigger Points)", "Deficiencias vitamínicas localizadas", "Dolor neuropático"], "process": ["Identificación de los puntos clave para la inyección.", "Preparación de una solución personalizada (vitaminas, traumeel, etc.).", "Aplicación precisa y rápida en los puntos seleccionados."], "frequency": "Según la condición, de semanal a mensual", "safety": "Realizado por un profesional certificado en un entorno estéril."}'),
-      (9, 'Consulta Herbal TCM', 'Prescripción de fórmulas herbales chinas personalizadas para tratar condiciones desde la raíz, restaurando el equilibrio interno.', '/assets/servicio-consulta-herbal.webp', '45 min', '100 (más costo de hierbas)',
-        '{"title": "Sanación Natural con Fitoterapia China", "benefits": ["Trata la causa raíz de las enfermedades, no solo los síntomas.", "Fórmulas personalizadas para sus necesidades únicas.", "Menos efectos secundarios que muchos medicamentos convencionales.", "Fortalece el cuerpo y previene futuras enfermedades."], "treats": ["Desequilibrios hormonales", "Problemas digestivos crónicos", "Alergias y problemas de la piel", "Insomnio y ansiedad", "Apoyo para la fertilidad"], "process": ["Diagnóstico completo (lengua, pulso, historial).", "Prescripción de una fórmula herbal única.", "Las hierbas se dispensan en forma de tés, gránulos o cápsulas.", "Seguimiento para ajustar la fórmula según la evolución."], "frequency": "La consulta es mensual, el tratamiento es diario", "safety": "Supervisado por un herbalista certificado para garantizar seguridad y eficacia."}')
-    );
+    await client.query(`
+        INSERT INTO services (name, description, image_url, duration, price, detailed_info) VALUES
+        ('Acupuntura', 'Técnica de curación milenaria que utiliza agujas finas para restaurar el equilibrio, aliviar el dolor y promover el bienestar general.', '/assets/servicio-acupuntura.webp', '45-60 minutos', 'Consultar', '{
+            "title": "Acupuntura: Curación Milenaria",
+            "benefits": ["Alivio efectivo del dolor agudo y crónico.", "Reducción significativa del estrés y la ansiedad.", "Mejora de la calidad del sueño.", "Fortalecimiento del sistema inmunológico."],
+            "treats": ["Dolor de espalda y cuello", "Migrañas y cefaleas tensionales.", "Artritis y lesiones deportivas.", "Insomnio y fatiga."],
+            "process": ["Diagnóstico personalizado según la Medicina Tradicional China.", "Inserción de agujas finas y estériles en puntos energéticos clave.", "Periodo de relajación profunda para permitir que el cuerpo responda.", "Recomendaciones de estilo de vida para potenciar los efectos."],
+            "frequency": "Sesiones semanales o quincenales según la condición.",
+            "safety": "Procedimiento muy seguro, realizado con agujas estériles de un solo uso."
+        }'),
+        ('Medicina Oriental', 'Enfoque integral que combina diagnóstico tradicional chino con técnicas modernas para tratar la causa raíz de las enfermedades.', '/assets/servicio-medicina-oriental.webp', '60 minutos', 'Consultar', '{
+            "title": "Medicina Oriental: Sabiduría Ancestral para la Salud Moderna",
+            "benefits": ["Tratamiento holístico que aborda cuerpo, mente y espíritu.", "Identificación de desequilibrios energéticos subyacentes.", "Planes de tratamiento que pueden incluir acupuntura, hierbas y dieta.", "Prevención de enfermedades futuras fortaleciendo el sistema."],
+            "treats": ["Amplia gama de condiciones agudas y crónicas.", "Desórdenes digestivos y respiratorios.", "Problemas de salud mental y emocional.", "Desequilibrios hormonales y ginecológicos."],
+            "process": ["Evaluación detallada incluyendo pulso y diagnóstico de lengua.", "Creación de un plan de tratamiento integral.", "Aplicación de terapias como acupuntura, moxibustión o ventosas.", "Prescripción de fórmulas herbales personalizadas si es necesario."],
+            "frequency": "Consultas regulares para ajustar el tratamiento.",
+            "safety": "Enfoque seguro y natural, adaptado a cada individuo."
+        }'),
+        ('Medicina Funcional', 'Enfoque personalizado que identifica y trata las causas fundamentales de las enfermedades crónicas.', '/assets/servicio-medicina-funcional.webp', '90 minutos', 'Consultar', '{
+            "title": "Medicina Funcional: Tratando la Causa, no solo el Síntoma",
+            "benefits": ["Investigación profunda de las causas raíz de la enfermedad.", "Uso de pruebas de laboratorio avanzadas.", "Planes de tratamiento altamente personalizados.", "Enfoque en nutrición, estilo de vida y genética."],
+            "treats": ["Enfermedades autoinmunes y crónicas.", "Fatiga crónica y fibromialgia.", "Problemas metabólicos y de peso.", "Salud intestinal y desequilibrios hormonales."],
+            "process": ["Análisis exhaustivo de historial médico y estilo de vida.", "Solicitud de pruebas funcionales específicas (sangre, saliva, etc.).", "Desarrollo de un plan terapéutico detallado.", "Seguimiento continuo para optimizar los resultados."],
+            "frequency": "Consulta inicial intensiva con seguimientos periódicos.",
+            "safety": "Basado en la ciencia, centrado en el paciente y la prevención."
+        }'),
+        ('Medicina Ortomolecular', 'Tratamiento que utiliza nutrientes en dosis terapéuticas para restaurar el equilibrio bioquímico óptimo.', '/assets/servicio-medicina-ortomolecular.webp', '60 minutos', 'Consultar', '{
+            "title": "Medicina Ortomolecular: Nutrición para la Sanación Celular",
+            "benefits": ["Corrección de deficiencias nutricionales específicas.", "Optimización de la función celular y metabólica.", "Uso de vitaminas, minerales y aminoácidos en dosis terapéuticas.", "Apoyo integral a la salud y prevención de enfermedades."],
+            "treats": ["Estrés oxidativo y envejecimiento prematuro.", "Apoyo al sistema inmunológico.", "Mejora del rendimiento mental y físico.", "Condiciones crónicas relacionadas con deficiencias nutricionales."],
+            "process": ["Evaluación bioquímica y análisis de deficiencias.", "Diseño de un protocolo de suplementación personalizado.", "Asesoramiento nutricional para potenciar los efectos.", "Monitorización de la respuesta y ajuste de dosis."],
+            "frequency": "Consultas para establecer y ajustar el plan de nutrientes.",
+            "safety": "Seguro bajo supervisión médica para garantizar dosis adecuadas."
+        }'),
+        ('Medicina Homeopática', 'Sistema de medicina natural que estimula la capacidad innata del cuerpo para curarse a sí mismo.', '/assets/servicio-medicina-homeopatica.webp', '75 minutos', 'Consultar', '{
+            "title": "Medicina Homeopática: Estímulo Natural para la Autocuración",
+            "benefits": ["Tratamiento suave, no tóxico y sin efectos secundarios.", "Enfoque individualizado basado en la totalidad de los síntomas.", "Fortalece la respuesta vital del propio cuerpo.", "Adecuado para todas las edades, incluyendo niños y ancianos."],
+            "treats": ["Afecciones agudas como resfriados, gripes y alergias.", "Problemas crónicos de la piel, digestivos y emocionales.", "Trastornos del sueño y estrés.", "Apoyo general al bienestar y la vitalidad."],
+            "process": ["Entrevista homeopática detallada para entender al individuo.", "Selección de un remedio específico que coincida con el cuadro sintomático.", "Administración del remedio en dosis mínimas.", "Seguimiento para evaluar la respuesta del cuerpo."],
+            "frequency": "Varía según si la condición es aguda o crónica.",
+            "safety": "Extremadamente seguro, utilizando remedios altamente diluidos."
+        }'),
+        ('Consulta de Nutrición TCM', 'Orientación personalizada sobre el uso de principios de la Medicina Tradicional China para optimizar la salud a través de la nutrición adecuada.', '/assets/servicio-nutricion.webp', '45 minutos', 'Consultar', '{
+            "title": "Nutrición TCM: Alimentación para el Equilibrio Energético",
+            "benefits": ["Plan de alimentación basado en su constitución y diagnóstico TCM.", "Uso de las propiedades energéticas de los alimentos (frío, caliente, etc.).", "Mejora de la digestión y la absorción de nutrientes.", "Armonización del flujo de Qi (energía vital) en el cuerpo."],
+            "treats": ["Problemas digestivos como hinchazón, gases y digestión lenta.", "Fatiga, falta de energía y debilidad.", "Desequilibrios de peso.", "Apoyo nutricional para condiciones crónicas."],
+            "process": ["Evaluación de la dieta actual y diagnóstico según la TCM.", "Recomendaciones de alimentos específicos para incluir o evitar.", "Guía sobre métodos de cocción y horarios de comida.", "Recetas y planes de comidas adaptados a sus necesidades."],
+            "frequency": "Consulta inicial con seguimientos para ajustar el plan.",
+            "safety": "Enfoque natural y personalizado, basado en principios milenarios."
+        }'),
+        ('Terapia de Ozono en Acupuntos', 'Aplicación dirigida de ozono en puntos de acupuntura para mejorar la curación, apoyar el sistema inmunológico y aliviar el dolor.', '/assets/servicio-terapia-de-ozono.webp', '30 minutos', 'Consultar', '{
+            "title": "Terapia de Ozono: Oxigenación y Sanación Potenciada",
+            "benefits": ["Potente efecto antiinflamatorio y analgésico.", "Mejora de la oxigenación y circulación en los tejidos.", "Estimulación del sistema inmunológico y acción antimicrobiana.", "Acelera la reparación y regeneración de tejidos."],
+            "treats": ["Dolor articular y muscular crónico.", "Hernias discales y ciática.", "Fibromialgia.", "Heridas de difícil cicatrización e infecciones localizadas."],
+            "process": ["Identificación de los puntos de acupuntura relevantes.", "Preparación de una mezcla de oxígeno-ozono en concentraciones precisas.", "Inyección de pequeñas cantidades de la mezcla en los puntos seleccionados.", "Procedimiento rápido con mínimas molestias."],
+            "frequency": "Serie de tratamientos, generalmente semanales.",
+            "safety": "Seguro cuando es administrado por un profesional capacitado."
+        }'),
+        ('Terapia de Inyección', 'Utilización de inyecciones especializadas para administrar sustancias naturales para el alivio dirigido del dolor y la regeneración de tejidos.', '/assets/servicio-terapia-de-inyeccion.webp', '30 minutos', 'Consultar', '{
+            "title": "Terapia de Inyección: Alivio Dirigido y Regeneración",
+            "benefits": ["Administración precisa de agentes terapéuticos en el sitio de la lesión.", "Alivio rápido y localizado del dolor.", "Estimulación de los procesos naturales de curación del cuerpo.", "Alternativa mínimamente invasiva a procedimientos más complejos."],
+            "treats": ["Dolor en articulaciones (rodilla, hombro, etc.).", "Puntos gatillo miofasciales.", "Lesiones de tendones y ligamentos.", "Neuralgias y dolor de nervios periféricos."],
+            "process": ["Diagnóstico preciso de la zona a tratar.", "Selección de la sustancia a inyectar (proloterapia, vitaminas, etc.).", "Procedimiento de inyección estéril y preciso.", "Instrucciones para el cuidado posterior a la inyección."],
+            "frequency": "Generalmente se requieren varias sesiones espaciadas.",
+            "safety": "Procedimiento seguro realizado en un entorno clínico."
+        }'),
+        ('Consulta Herbal TCM', 'Asesoramiento experto sobre la incorporación de la Medicina Herbal China Tradicional para objetivos personalizados de salud y bienestar.', '/assets/servicio-consulta-herbal.webp', '60 minutos', 'Consultar', '{
+            "title": "Consulta Herbal TCM: El Poder Curativo de la Naturaleza",
+            "benefits": ["Fórmulas personalizadas para tratar su patrón de desequilibrio específico.", "Apoyo natural para una amplia variedad de condiciones de salud.", "Menos efectos secundarios que muchos medicamentos convencionales.", "Trabaja en sinergia con otros tratamientos como la acupuntura."],
+            "treats": ["Problemas digestivos, respiratorios y ginecológicos.", "Manejo del estrés, la ansiedad y el insomnio.", "Fortalecimiento del sistema inmunológico.", "Mejora de la energía y la vitalidad general."],
+            "process": ["Diagnóstico detallado según los principios de la TCM.", "Prescripción de una fórmula herbal única para usted.", "Instrucciones claras sobre la preparación y dosificación.", "Seguimiento para ajustar la fórmula según su progreso."],
+            "frequency": "Consulta inicial con seguimientos para reevaluar y modificar la fórmula.",
+            "safety": "Seguro y efectivo bajo la guía de un herbolario cualificado."
+        }')
+    ;`);
 
     const insurances = [
-        { id: 'aetna', name: 'Aetna', brandColor: '#E0193E' },
-        { id: 'ambetter', name: 'Ambetter', brandColor: '#7C4DFF' },
-        { id: 'amerigroup', name: 'Amerigroup', brandColor: '#0064A6' },
-        { id: 'avmed', name: 'AvMed', brandColor: '#00A79D' },
-        { id: 'bcbs', name: 'Blue Cross Blue Shield', brandColor: '#1F61A8' },
-        { id: 'careplus', name: 'CarePlus', brandColor: '#F37421' },
-        { id: 'cigna', name: 'Cigna', brandColor: '#00A3C6' },
-        { id: 'devoted', name: 'Devoted Health', brandColor: '#FF6F61' },
-        { id: 'doctors', name: 'Doctors HealthCare', brandColor: '#2C3E50' },
-        { id: 'florida-health-care', name: 'Florida Health Care', brandColor: '#007A53' },
-        { id: 'healthsun', name: 'HealthSun', brandColor: '#FDB813' },
-        { id: 'humana', name: 'Humana', brandColor: '#6DBA2C' },
-        { id: 'leon', name: 'Leon Medical Centers', brandColor: '#A81A2D' },
-        { id: 'medicare', name: 'Medicare', brandColor: '#1A4F8B' },
-        { id: 'mmm', name: 'MMM of Florida', brandColor: '#0097A9' },
-        { id: 'molina', name: 'Molina Healthcare', brandColor: '#00A950' },
-        { id: 'simply', name: 'Simply Healthcare', brandColor: '#00B3E3' },
+        { id: 'aetna', name: 'Aetna', brandColor: '#00A3E0' },
+        { id: 'ambetter', name: 'Ambetter', brandColor: '#F15A29' },
+        { id: 'avmed', name: 'AvMed', brandColor: '#00558C' },
+        { id: 'bcbs', name: 'Blue Cross Blue Shield', brandColor: '#005EB8' },
+        { id: 'cigna', name: 'Cigna', brandColor: '#007DBA' },
+        { id: 'doctors-healthcare', name: 'Doctors Healthcare Plans', brandColor: '#1E90FF' },
+        { id: 'simply', name: 'Simply Healthcare', brandColor: '#00AEEF' },
         { id: 'sunshine', name: 'Sunshine Health', brandColor: '#FFC72C' },
-        { id: 'uhc', name: 'UnitedHealthcare', brandColor: '#002C77' },
-        { id: 'wellcare', name: 'WellCare', brandColor: '#A1286C' },
+        { id: 'uhc', name: 'UnitedHealthcare', brandColor: '#00549A' },
+        { id: 'medicare', name: 'Medicare', brandColor: '#B0B0B0' },
     ];
+
     for (const ins of insurances) {
-        await client.query('INSERT INTO insurances (id, name, brand_color) VALUES ($1, $2, $3)', [ins.id, ins.name, ins.brandColor]);
+        await client.query(
+            `INSERT INTO insurances (id, name, brand_color) VALUES ($1, $2, $3)`,
+            [ins.id, ins.name, ins.brandColor]
+        );
     }
-    
-    // Lista de seguros aceptados por defecto
-    const acceptedInsurances = ['aetna', 'bcbs', 'cigna', 'humana', 'medicare', 'uhc'];
+    console.log('Insurances seeded.');
+
+    // Seed some accepted insurances
+    const acceptedInsurances = ['bcbs', 'uhc', 'aetna', 'cigna', 'medicare'];
     for (const insId of acceptedInsurances) {
-        await client.query('INSERT INTO accepted_insurances (insurance_id) VALUES ($1)', [insId]);
+        await client.query(
+            `INSERT INTO accepted_insurances (insurance_id) VALUES ($1)`,
+            [insId]
+        );
     }
+    console.log('Accepted insurances seeded.');
 
     await client.query('COMMIT');
-    console.log('Database seeded successfully.');
+    console.log('✅ Database initialization complete and data seeded.');
+
   } catch (err) {
     await client.query('ROLLBACK');
-    console.error('Error during database initialization:', err);
+    console.error('❌ Error during database initialization:', err);
     throw err;
   } finally {
     client.release();
-    console.log('Database client released.');
+    console.log('Client released.');
   }
 };
 
-// Si el script se ejecuta directamente con 'ts-node', inicializa la BD.
+// This block ensures the script only runs automatically if executed directly
+// e.g., `npx ts-node src/init-db.ts`
 if (require.main === module) {
-  console.log('Running init-db.ts directly...');
   initializeDatabase()
     .then(() => {
-      console.log('✅ Database initialization complete.');
+      console.log('Script finished successfully.');
       pool.end();
     })
-    .catch((error) => {
-      console.error('❌ Failed to initialize database:', error);
+    .catch(() => {
+      console.error('Script failed.');
       pool.end();
-      process.exit(1);
     });
 }
