@@ -1,12 +1,11 @@
-import express from 'express';
-import { Request, Response } from 'express';
+import express, { Request as ExpressRequest, Response as ExpressResponse } from 'express';
 import pool from '../db';
 import { verifyToken, isAdmin } from '../middleware/auth';
 
 const router = express.Router();
 
 // GET /api/clinic-info (Public)
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', async (req: ExpressRequest, res: ExpressResponse) => {
     try {
         const result = await pool.query('SELECT * FROM clinic_info LIMIT 1');
         res.json(result.rows[0]);
@@ -17,7 +16,7 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 // POST /api/clinic-info (Admin only)
-router.post('/', verifyToken, isAdmin, async (req: Request, res: Response) => {
+router.post('/', verifyToken, isAdmin, async (req: ExpressRequest, res: ExpressResponse) => {
     const { name, address, phone, email, website } = req.body;
     try {
         const result = await pool.query(

@@ -1,7 +1,7 @@
-import express from 'express';
-import { Request, Response } from 'express';
-import cors from 'cors';
+import express, { Request as ExpressRequest, Response as ExpressResponse } from 'express';
+import cors, { CorsOptions } from 'cors';
 import dotenv from 'dotenv';
+import path from 'path'; // Importamos el módulo 'path' de Node.js
 import pool from './db';
 import { clinicInfoRouter } from './api/clinic';
 import { doctorProfileRouter } from './api/doctorProfile';
@@ -10,8 +10,8 @@ import { appointmentsRouter } from './api/appointments';
 import { chatMessagesRouter } from './api/chat';
 import { insurancesRouter } from './api/insurances';
 import { authRouter } from './api/auth';
+import { setupRouter } from './api/setup';
 import './middleware/auth';
-import { initializeDatabase } from './init-db'; // Importar la función
 
 dotenv.config();
 
@@ -33,7 +33,7 @@ if (process.env.FRONTEND_URL) {
     console.log(`CORS: Production frontend URL added to allowed origins: ${frontendUrl}`);
 }
 
-const corsOptions: cors.CorsOptions = {
+const corsOptions: CorsOptions = {
     origin: (origin, callback) => {
         // Permitir peticiones sin 'origin' (como las de Postman o apps móviles) o si el origen está en nuestra lista blanca.
         if (!origin || allowedOrigins.includes(origin)) {
@@ -50,6 +50,13 @@ const corsOptions: cors.CorsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
+// --- Servir archivos estáticos del frontend ---
+// Construimos la ruta al directorio de build del frontend para producción.
+const frontendDistPath = path.join(__dirname, '..', 'frontend', 'dist');
+// Servimos los assets (JS, CSS, imágenes, etc.) desde la carpeta 'dist' del frontend.
+app.use(express.static(frontendDistPath));
+
+
 // API Routes
 app.use('/api/auth', authRouter);
 app.use('/api/clinic-info', clinicInfoRouter);
@@ -58,38 +65,13 @@ app.use('/api/services', servicesRouter);
 app.use('/api/appointments', appointmentsRouter);
 app.use('/api/chat-messages', chatMessagesRouter);
 app.use('/api/insurances', insurancesRouter);
+app.use('/api/setup', setupRouter); // Ruta de inicialización refactorizada
 
-app.get('/api', (req: Request, res: Response) => {
+app.get('/api', (req: ExpressRequest, res: ExpressResponse) => {
     res.send('ZIMI Backend API is running!');
 });
 
-// Endpoint seguro para inicializar la BD, protegido por una variable de entorno.
-app.get('/api/setup/init-database', async (req: Request, res: Response) => {
-    const secretKey = process.env.INIT_DB_SECRET_KEY;
-    const providedKey = req.query.key;
-
-    if (!secretKey || secretKey.length < 10) {
-        console.error('CRITICAL: INIT_DB_SECRET_KEY is not set or is too short. The database initialization endpoint is disabled.');
-        return res.status(500).send('❌ Endpoint de inicialización no configurado de forma segura en el servidor.');
-    }
-    
-    if (providedKey !== secretKey) {
-        console.warn(`SECURITY: Failed attempt to access init-database endpoint with wrong key: ${providedKey}`);
-        return res.status(403).send('❌ Clave secreta no válida.');
-    }
-
-    console.log('Received authorized request to initialize database...');
-    try {
-        await initializeDatabase();
-        res.status(200).send('✅ Base de datos inicializada con éxito. ¡Ya puedes cerrar esta ventana!');
-    } catch (error) {
-        console.error('Error during remote database initialization:', error);
-        res.status(500).send(`❌ Error al inicializar la base de datos: ${error instanceof Error ? error.message : 'Error desconocido'}`);
-    }
-});
-
-
-app.get('/api/health', async (req: Request, res: Response) => {
+app.get('/api/health', async (req: ExpressRequest, res: ExpressResponse) => {
     try {
         await pool.query('SELECT 1');
         res.status(200).send('Backend and database connection are healthy.');
@@ -98,6 +80,16 @@ app.get('/api/health', async (req: Request, res: Response) => {
         res.status(500).send('Database connection failed.');
     }
 });
+
+
+// --- Catch-all para servir el index.html del frontend ---
+// Esto es crucial para que el enrutamiento del lado del cliente (React Router) funcione.
+// Cualquier solicitud GET que no coincida con una ruta de API anterior, servirá la app de React.
+// Debe ir DESPUÉS de todas las rutas de la API.
+app.get('*', (req: ExpressRequest, res: ExpressResponse) => {
+    res.sendFile(path.join(frontendDistPath, 'index.html'));
+});
+
 
 // The app.listen call is removed from this file.
 // It now lives in `local.ts` for local development.
