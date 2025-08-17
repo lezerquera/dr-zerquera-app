@@ -1,8 +1,8 @@
-import express, { Request as ExpressRequest, Response as ExpressResponse } from 'express';
+import { Router, Request, Response } from 'express';
 import pool from '../db';
 import { verifyToken, isAdmin } from '../middleware/auth';
 
-const router = express.Router();
+const router = Router();
 
 const selectAppointmentQuery = `
     SELECT a.id,
@@ -17,11 +17,11 @@ const selectAppointmentQuery = `
            a.appointment_time  AS "time",
            row_to_json(s.*)    AS service
     FROM appointments a
-    JOIN services s ON a.service_id = s.id
+    LEFT JOIN services s ON a.service_id = s.id
 `;
 
-// GET /api/appointments
-router.get('/', verifyToken, isAdmin, async (req: ExpressRequest, res: ExpressResponse) => {
+// GET /api/appointments (Admin only: gets all appointments)
+router.get('/', verifyToken, isAdmin, async (req: Request, res: Response) => {
     try {
         const result = await pool.query(`${selectAppointmentQuery} ORDER BY a.id DESC`);
         res.json(result.rows);
@@ -31,8 +31,27 @@ router.get('/', verifyToken, isAdmin, async (req: ExpressRequest, res: ExpressRe
     }
 });
 
+// GET /api/appointments/my-appointments (Patient only: gets their own appointments)
+router.get('/my-appointments', verifyToken, async (req: Request, res: Response) => {
+    const patientId = req.user?.id;
+    if (!patientId) {
+        return res.status(403).json({ error: 'User ID not found in token' });
+    }
+    try {
+        const result = await pool.query(
+            `${selectAppointmentQuery} WHERE a.patient_id = $1 ORDER BY a.id DESC`,
+            [patientId]
+        );
+        res.json(result.rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
 // POST /api/appointments (Public)
-router.post('/', verifyToken, async (req: ExpressRequest, res: ExpressResponse) => {
+router.post('/', verifyToken, async (req: Request, res: Response) => {
     const { patientName, patientPhone, patientEmail, serviceId, urgency, reason } = req.body;
     const patientId = req.user?.id;
     
@@ -60,20 +79,22 @@ router.post('/', verifyToken, async (req: ExpressRequest, res: ExpressResponse) 
     }
 });
 
-// PUT /api/appointments/:id/confirm
-router.put('/:id/confirm', verifyToken, isAdmin, async (req: ExpressRequest, res: ExpressResponse) => {
+// PUT /api/appointments/:id/status -> Replaces the old /confirm endpoint
+router.put('/:id/status', verifyToken, isAdmin, async (req: Request, res: Response) => {
     const appointmentId = parseInt(req.params.id);
+    const { status, date, time } = req.body; // Expecting status, date, and time
+
+    if (!status || !date || !time) {
+        return res.status(400).json({ error: 'Status, date, and time are required fields.' });
+    }
 
     try {
-        const date = new Date().toISOString().split('T')[0]; // Placeholder date
-        const time = '10:00'; // Placeholder time
-
         const result = await pool.query(
             `UPDATE appointments
-             SET status = 'Confirmada', appointment_date = $1, appointment_time = $2
-             WHERE id = $3
-             RETURNING id, patient_id AS "patientId"`,
-            [date, time, appointmentId]
+             SET status = $1, appointment_date = $2, appointment_time = $3
+             WHERE id = $4
+             RETURNING id`,
+            [status, date, time, appointmentId]
         );
         
         if (result.rows.length === 0) {
@@ -91,5 +112,6 @@ router.put('/:id/confirm', verifyToken, isAdmin, async (req: ExpressRequest, res
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+
 
 export { router as appointmentsRouter };

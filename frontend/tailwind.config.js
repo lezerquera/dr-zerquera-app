@@ -30,15 +30,6 @@ export default {
         'text-muted-dark': '#A8B2D1',
         'border-dark': '#243A59',
       },
-      animation: {
-        'infinite-scroll': 'infinite-scroll 40s linear infinite',
-      },
-      keyframes: {
-        'infinite-scroll': {
-          from: { transform: 'translateX(0)' },
-          to: { transform: 'translateX(-50%)' },
-        }
-      }
     },
   },
   plugins: [],

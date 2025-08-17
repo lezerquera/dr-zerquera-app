@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Routes, Route, Link } from 'react-router-dom';
 import { DoctorProfile, Service, Appointment, ClinicInfo, ChatMessage, Notification, Insurance, User } from './types';
@@ -28,6 +27,8 @@ const MainApp: React.FC<MainAppProps> = ({ user, token, onLogout }) => {
     const [allInsurances, setAllInsurances] = useState<Insurance[]>([]);
     const [acceptedInsurances, setAcceptedInsurances] = useState<string[]>([]);
     const [acceptedInsuranceDetails, setAcceptedInsuranceDetails] = useState<Insurance[]>([]);
+    const [adminId, setAdminId] = useState<number | null>(null);
+    const [unreadChatCount, setUnreadChatCount] = useState<number>(0);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -36,40 +37,56 @@ const MainApp: React.FC<MainAppProps> = ({ user, token, onLogout }) => {
     const fetchData = useCallback(async () => {
       try {
         const fetchOptions = { headers: authHeader };
+        
         const [
-          profileRes, servicesRes, appointmentsRes, chatRes, 
-          clinicInfoRes, allInsurancesRes, acceptedInsurancesRes
+          profileRes, servicesRes, clinicInfoRes, allInsurancesRes, 
+          acceptedInsurancesRes, adminIdRes,
         ] = await Promise.all([
           fetch(`${API_BASE_URL}/doctor-profile`),
           fetch(`${API_BASE_URL}/services`),
-          user.role === 'admin' ? fetch(`${API_BASE_URL}/appointments`, fetchOptions) : Promise.resolve(null),
-          fetch(`${API_BASE_URL}/chat-messages`, fetchOptions),
           fetch(`${API_BASE_URL}/clinic-info`),
           fetch(`${API_BASE_URL}/insurances/all`),
           fetch(`${API_BASE_URL}/insurances/accepted-details`),
+          fetch(`${API_BASE_URL}/users/admin-id`, fetchOptions),
         ]);
 
-        if (!profileRes.ok || !servicesRes.ok || !clinicInfoRes.ok) {
+        if (!profileRes.ok || !servicesRes.ok || !clinicInfoRes.ok || !adminIdRes.ok) {
           throw new Error('No se pudo cargar la información esencial de la clínica.');
         }
 
+        // Set base data
         setDoctorProfile(await profileRes.json());
         setServices(await servicesRes.json());
-        if (appointmentsRes?.ok) {
-            setAppointments(await appointmentsRes.json());
-        }
-        if (chatRes?.ok) {
-            setChatMessages(await chatRes.json());
-        }
         setClinicInfo(await clinicInfoRes.json());
         setAllInsurances(await allInsurancesRes.json());
+        const adminData = await adminIdRes.json();
+        setAdminId(adminData.adminId);
         
         if (acceptedInsurancesRes?.ok) {
             const acceptedDetails = await acceptedInsurancesRes.json();
             setAcceptedInsuranceDetails(acceptedDetails);
             setAcceptedInsurances(acceptedDetails.map((ins: Insurance) => ins.id));
         }
-        
+
+        // Fetch role-specific data
+        if (user.role === 'admin') {
+            const [appointmentsRes, unreadCountRes] = await Promise.all([
+                fetch(`${API_BASE_URL}/appointments`, fetchOptions),
+                fetch(`${API_BASE_URL}/chat/unread-count`, fetchOptions)
+            ]);
+            if (appointmentsRes.ok) setAppointments(await appointmentsRes.json());
+            if (unreadCountRes.ok) {
+                const data = await unreadCountRes.json();
+                setUnreadChatCount(data.unreadCount);
+            }
+        } else { // Patient
+            const [appointmentsRes, chatRes] = await Promise.all([
+                fetch(`${API_BASE_URL}/appointments/my-appointments`, fetchOptions),
+                fetch(`${API_BASE_URL}/chat/my-conversation`, fetchOptions)
+            ]);
+            if (appointmentsRes.ok) setAppointments(await appointmentsRes.json());
+            if (chatRes.ok) setChatMessages(await chatRes.json());
+        }
 
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Ocurrió un error desconocido.');
@@ -94,15 +111,143 @@ const MainApp: React.FC<MainAppProps> = ({ user, token, onLogout }) => {
                 createdAt: new Date(),
                 status: 'unread'
             }
-            // Play sound if the notification is for the current user type
             if ((isAdminView && newNotification.userId === 'admin') || (!isAdminView && newNotification.userId === user.id.toString())) {
                 playNotificationSound();
             }
             return [newNotification, ...prev];
         });
     }, [playNotificationSound, isAdminView, user.id]);
+
+    // Polling effect for PATIENT
+    useEffect(() => {
+        if (user.role !== 'patient') return;
+
+        const pollData = async () => {
+            try {
+                const fetchOptions = { headers: authHeader };
+                const [appointmentsRes, chatRes] = await Promise.all([
+                    fetch(`${API_BASE_URL}/appointments/my-appointments`, fetchOptions),
+                    fetch(`${API_BASE_URL}/chat/my-conversation`, fetchOptions)
+                ]);
+
+                if (appointmentsRes.ok) {
+                    const newAppointments: Appointment[] = await appointmentsRes.json();
+                    setAppointments(currentAppointments => {
+                        // Compare new with current state to find changes
+                        newAppointments.forEach(newApp => {
+                            const oldApp = currentAppointments.find(a => a.id === newApp.id);
+                            if (oldApp && oldApp.status === 'Solicitada' && newApp.status === 'Confirmada') {
+                                createNotification({
+                                    userId: user.id.toString(),
+                                    type: 'appointment_confirmed',
+                                    priority: 'high',
+                                    message: `Su cita para "${newApp.service.name}" ha sido confirmada para el ${newApp.date}.`,
+                                });
+                            }
+                        });
+                        return newAppointments;
+                    });
+                }
+
+                if (chatRes.ok) {
+                    const newMessages: ChatMessage[] = await chatRes.json();
+                    setChatMessages(currentMessages => {
+                        if (newMessages.length > currentMessages.length) {
+                             // Assuming new messages are always at the end
+                            const lastNewMessage = newMessages[newMessages.length - 1];
+                            if(lastNewMessage.senderRole === 'admin') {
+                                createNotification({
+                                    userId: user.id.toString(),
+                                    type: 'new_chat_message',
+                                    priority: 'medium',
+                                    message: `Tiene un nuevo mensaje del Dr. Zerquera.`
+                                });
+                            }
+                            return newMessages;
+                        }
+                        return currentMessages;
+                    });
+                }
+            } catch (error) {
+                console.error("Patient polling error:", error);
+            }
+        };
+
+        const intervalId = setInterval(pollData, 15000); 
+        return () => clearInterval(intervalId);
+    }, [user.role, authHeader, createNotification, user.id]);
     
-    // --- API HANDLERS ---
+    // Polling effect for ADMIN
+    useEffect(() => {
+        if (user.role !== 'admin') return;
+
+        const pollData = async () => {
+            try {
+                const fetchOptions = { headers: authHeader };
+                const [appointmentsRes, unreadCountRes] = await Promise.all([
+                    fetch(`${API_BASE_URL}/appointments`, fetchOptions),
+                    fetch(`${API_BASE_URL}/chat/unread-count`, fetchOptions)
+                ]);
+
+                if (appointmentsRes.ok) {
+                    const newAppointments: Appointment[] = await appointmentsRes.json();
+                    setAppointments(currentAppointments => {
+                        if (newAppointments.length > currentAppointments.length) {
+                             createNotification({
+                                userId: 'admin',
+                                type: 'new_appointment_request',
+                                priority: 'high',
+                                message: `Tiene una nueva solicitud de cita.`,
+                            });
+                        }
+                        return newAppointments;
+                    });
+                }
+                
+                if (unreadCountRes.ok) {
+                    const data = await unreadCountRes.json();
+                    setUnreadChatCount(prevCount => {
+                        if (data.unreadCount > prevCount) {
+                             createNotification({
+                                userId: 'admin',
+                                type: 'new_chat_message',
+                                priority: 'medium',
+                                message: 'Ha recibido un nuevo mensaje de un paciente.'
+                            });
+                        }
+                        return data.unreadCount;
+                    });
+                }
+
+            } catch (error) {
+                console.error("Admin polling error:", error);
+            }
+        };
+
+        const intervalId = setInterval(pollData, 15000);
+        return () => clearInterval(intervalId);
+
+    }, [user.role, authHeader, createNotification]);
+
+    const fetchUnreadCount = useCallback(async () => {
+        if (user.role !== 'admin') return;
+        try {
+            const res = await fetch(`${API_BASE_URL}/chat/unread-count`, { headers: authHeader });
+            if(res.ok) {
+                const data = await res.json();
+                setUnreadChatCount(data.unreadCount);
+            }
+        } catch (error) {
+            console.error("Failed to fetch unread count:", error);
+        }
+    }, [user.role, authHeader]);
+
+    const clearChatNotifications = useCallback(() => {
+        if (user.role !== 'admin') return;
+        setNotifications(prev =>
+            prev.filter(n => n.type !== 'new_chat_message' || n.userId !== 'admin')
+        );
+    }, [user.role]);
 
     const requestAppointment = useCallback(async (appointmentRequest: Omit<Appointment, 'id' | 'status' | 'date' | 'time' | 'patientId'>) => {
         try {
@@ -111,75 +256,66 @@ const MainApp: React.FC<MainAppProps> = ({ user, token, onLogout }) => {
                 headers: { 'Content-Type': 'application/json', ...authHeader },
                 body: JSON.stringify({ ...appointmentRequest, serviceId: appointmentRequest.service.id })
             });
-            if (!response.ok) throw new Error('Failed to request appointment');
+            if (!response.ok) throw new Error('No se pudo enviar la solicitud de cita.');
             const newAppointment = await response.json();
-            // In both roles, we want to notify the admin of a new request.
+            
+            // Both roles should update their list if they make an appointment
+            setAppointments(prev => [newAppointment, ...prev]);
+            
             createNotification({
                 userId: 'admin', type: 'new_appointment_request', priority: 'high',
                 message: `Nueva solicitud de cita de ${newAppointment.patientName} para ${newAppointment.service.name}.`,
                 data: { appointmentId: newAppointment.id }
             });
-            // If admin made it (less likely), also update their view
-             if (user.role === 'admin') {
-                setAppointments(prev => [...prev, newAppointment]);
-            }
-        } catch (error) { console.error("Failed to request appointment:", error); }
-    }, [createNotification, authHeader, user.role]);
+
+        } catch (error) {
+            console.error("Failed to request appointment:", error);
+            alert(`Error al solicitar cita: ${error instanceof Error ? error.message : 'Ocurrió un error desconocido.'}`);
+        }
+    }, [createNotification, authHeader]);
     
-    const confirmAppointment = useCallback(async (appointmentId: number) => {
+    const confirmAppointment = useCallback(async (appointmentId: number, date: string, time: string) => {
         try {
-            const response = await fetch(`${API_BASE_URL}/appointments/${appointmentId}/confirm`, { method: 'PUT', headers: authHeader });
+            const response = await fetch(`${API_BASE_URL}/appointments/${appointmentId}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', ...authHeader },
+                body: JSON.stringify({ status: 'Confirmada', date, time })
+            });
             if (!response.ok) throw new Error('Failed to confirm appointment');
             const updatedAppointment = await response.json();
             setAppointments(prev => prev.map(app => (app.id === appointmentId ? updatedAppointment : app)));
             
-            if (updatedAppointment.patientId) {
-                 createNotification({
-                    userId: updatedAppointment.patientId.toString(), 
-                    type: 'appointment_confirmed', 
-                    priority: 'high',
-                    message: `Su cita para ${updatedAppointment.service.name} ha sido confirmada.`,
-                    data: { appointmentId: updatedAppointment.id }
-                });
-            } else {
-                console.warn("Could not send confirmation notification: patientId is missing on appointment.", updatedAppointment);
-            }
-        } catch (error) { console.error("Failed to confirm appointment:", error); }
-    }, [createNotification, authHeader]);
+            // Note: The patient will get their notification via polling, not a direct push here.
+            // This is more reliable as it doesn't depend on the admin's client.
 
-    const sendChatMessage = useCallback(async (message: Omit<ChatMessage, 'id' | 'timestamp'>) => {
-        if (message.senderRole === 'system') {
-            const systemMessage: ChatMessage = {
-                id: Date.now(),
-                ...message,
-                timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
-            };
-            setChatMessages(prev => [...prev, systemMessage]);
-            return;
+        } catch (error) {
+            console.error("Failed to confirm appointment:", error);
+            alert(`Error al confirmar la cita: ${error instanceof Error ? error.message : 'Ocurrió un error desconocido.'}`);
         }
+    }, [authHeader]);
 
+    const sendChatMessage = useCallback(async (message: Omit<ChatMessage, 'id' | 'timestamp' | 'sender' | 'senderId' | 'senderRole' | 'isRead'>): Promise<ChatMessage | null> => {
         try {
-            const response = await fetch(`${API_BASE_URL}/chat-messages`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeader }, body: JSON.stringify({ text: message.text })
+            const response = await fetch(`${API_BASE_URL}/chat/messages`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeader }, body: JSON.stringify(message)
             });
-            if (!response.ok) throw new Error('Failed to send message');
-            const newMessage = await response.json();
-            setChatMessages(prev => [...prev, newMessage]);
-
-            const recipientId = user.role === 'patient' ? 'admin' : 'some_patient_id'; // This needs logic to find the other user in a chat
+            if (!response.ok) throw new Error('No se pudo enviar el mensaje.');
+            const newMessage: ChatMessage = await response.json();
             
-            if (user.role === 'patient') {
-                createNotification({
-                    userId: 'admin', type: 'new_chat_message', priority: 'medium',
-                    message: `Nuevo mensaje de ${user.name}.`
-                });
-            } else if (user.role === 'admin') {
-                 // Here we'd need logic to find the patient's ID to notify them.
-                 // This is a complex featureaddition, so for now we just log it.
-                 console.log("Admin sent a message. Patient notification would be created here.");
+            if(user.role === 'patient') {
+                setChatMessages(prev => [...prev, newMessage]);
             }
-        } catch (error) { console.error("Failed to send chat message:", error); }
-    }, [createNotification, user.name, user.role, authHeader]);
+
+            // The recipient will get their notification via polling.
+            // This avoids creating duplicate notifications.
+
+            return newMessage;
+        } catch (error) { 
+            console.error("Failed to send chat message:", error);
+            alert(`Error al enviar mensaje: ${error instanceof Error ? error.message : 'Ocurrió un error desconocido.'}`);
+            return null;
+         }
+    }, [user.role, authHeader]);
 
     const saveService = async (service: Service) => {
         const isNew = !services.some(s => s.id === service.id);
@@ -197,9 +333,16 @@ const MainApp: React.FC<MainAppProps> = ({ user, token, onLogout }) => {
     const deleteService = async (id: number) => {
         try {
             const response = await fetch(`${API_BASE_URL}/services/${id}`, { method: 'DELETE', headers: authHeader });
-            if (!response.ok) throw new Error('Failed to delete service');
+            if (!response.ok) {
+                 const errorData = await response.json().catch(() => null);
+                 const errorMessage = errorData?.error || 'No se pudo eliminar el servicio.';
+                 throw new Error(errorMessage);
+            }
             await fetchData();
-        } catch (error) { console.error("Error deleting service:", error); }
+        } catch (error) { 
+            console.error("Error deleting service:", error); 
+            alert(`Error al eliminar el servicio: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+        }
     };
 
     const saveDoctorProfile = async (profile: DoctorProfile) => {
@@ -241,15 +384,17 @@ const MainApp: React.FC<MainAppProps> = ({ user, token, onLogout }) => {
     }
 
     const patientViewProps = {
-        user, doctorProfile, services, appointments, chatMessages, clinicInfo,
+        user, adminId, doctorProfile, services, appointments, chatMessages, clinicInfo,
         acceptedInsurances: acceptedInsuranceDetails,
         requestAppointment, sendChatMessage
     };
     
     const adminViewProps = {
+        user, token,
         doctorProfile, saveDoctorProfile, services, saveService, deleteService,
         clinicInfo, saveClinicInfo, appointments, confirmAppointment,
-        allInsurances, acceptedInsurances, saveAcceptedInsurances
+        allInsurances, acceptedInsurances, saveAcceptedInsurances, sendChatMessage,
+        unreadChatCount, fetchUnreadCount, clearChatNotifications
     };
 
     return (
@@ -258,7 +403,7 @@ const MainApp: React.FC<MainAppProps> = ({ user, token, onLogout }) => {
                 <div className="container mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-20">
                         <Link to="/" className="flex items-center gap-3">
-                            <Logo className="h-20 w-auto" />
+                            <Logo className="h-16 w-auto flex-shrink-0 sm:h-20" />
                             <span className="hidden sm:block font-bold text-base md:text-lg text-white leading-tight">
                                 ZERQUERA INTEGRATIVE MEDICAL INSTITUTE
                             </span>

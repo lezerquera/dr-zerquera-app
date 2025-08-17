@@ -249,8 +249,9 @@ export const initializeDatabase = async () => {
       CREATE TABLE IF NOT EXISTS chat_messages (
         id SERIAL PRIMARY KEY,
         sender_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-        sender_role VARCHAR(50),
+        recipient_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
         text TEXT,
+        is_read BOOLEAN DEFAULT FALSE,
         "timestamp" TIMESTAMPTZ DEFAULT NOW()
       );
     `);
@@ -283,26 +284,25 @@ export const initializeDatabase = async () => {
     // Seed Clinic Info (siempre se resetea)
     await client.query(`
         INSERT INTO clinic_info (id, name, address, phone, email, website) VALUES
-        (1, 'Zerquera Integrative Medical Institute', '8240 SW 40th St, Miami, FL 33155', '+1 (305) 274-4351', 'info@zimi.health', 'zimi.health')
+        (1, 'Zerquera Integrative Medical Institute', '7700 N Kendall Dr. Unit 807, Kendall, FL 33156', '(305) 274-4351', 'drzerquera@aol.com', 'www.drzerquera.com')
         ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, address = EXCLUDED.address, phone = EXCLUDED.phone, email = EXCLUDED.email, website = EXCLUDED.website;
     `);
 
     // Seed Doctor Profile (siempre se resetea)
     await client.query(`
       INSERT INTO doctor_profile (id, name, titles, photo_url, introduction, specialties, experience) VALUES
-      (1, 'Dr. Pablo J. Zerquera', 'MD, FACP', '/assets/dr-zerquera.webp',
-      'El Dr. Pablo J. Zerquera es un médico internista con más de 20 años de experiencia, certificado por la junta, que se especializa en medicina integrativa. Su enfoque combina la medicina convencional con terapias complementarias basadas en la evidencia para tratar a la persona en su totalidad, no solo los síntomas. El Dr. Zerquera cree firmemente en la creación de planes de tratamiento personalizados que aborden las causas fundamentales de la enfermedad y promuevan el bienestar a largo plazo, capacitando a sus pacientes para que tomen un papel activo en su propia salud.',
-      '{"Medicina Interna", "Medicina Integrativa", "Acupuntura Médica", "Manejo del Dolor Crónico", "Salud Digestiva", "Prevención y Bienestar"}',
-      'Con una distinguida carrera que abarca más de dos décadas, el Dr. Zerquera ha servido como médico de atención primaria y consultor en diversos entornos clínicos. Ha completado una formación avanzada en acupuntura médica y medicina funcional. Su experiencia radica en el diagnóstico y tratamiento de condiciones médicas complexas, con un interés particular en enfermedades crónicas, trastornos autoinmunes y desequilibrios hormonales. Está comprometido con el aprendizaje continuo y la integración de las últimas investigaciones científicas en su práctica para ofrecer la mejor atención posible a sus pacientes.'
+      (1, 'Dr. Pablo J. Zerquera', 'OMD, AP, PhD', '/assets/dr-zerquera.webp',
+      'El Dr. Pablo Zerquera se graduó como médico en la Universidad de La Habana, Cuba, donde recibió una formación rigurosa en ciencias médicas convencionales. Su interés por los enfoques terapéuticos complementarios lo llevó a profundizar en la medicina oriental, obteniendo una especialización en Acupuntura y Medicina Tradicional China en el Acupuncture and Massage College de Miami, Florida.',
+      '{"Medicina Oriental y Acupuntura", "Medicina Funcional", "Medicina Ortomolecular", "Medicina Homeopática", "Manejo del Dolor"}',
+      'Comprometido con una visión integradora de la salud, el Dr. Zerquera completó un doctorado en Medicina Homeopática en la Universidad Internacional de Cambridge, fortaleciendo su enfoque clínico con herramientas terapéuticas que respetan la individualidad biológica y emocional de cada paciente. Con más de una década de experiencia clínica, ha desarrollado una práctica centrada en el tratamiento del dolor crónico, trastornos emocionales, lesiones agudas y desequilibrios funcionales. Su abordaje combina técnicas como acupuntura, moxibustión, terapia de ozono en acupuntos, medicina ortomolecular y estrategias de regulación neurovegetativa, siempre con base en evidencia y sensibilidad clínica. El Dr. Zerquera atiende en inglés y español, y se distingue por su capacidad para integrar conocimientos médicos tradicionales con terapias avanzadas, ofreciendo una experiencia terapéutica precisa, humana y profundamente restauradora.'
       ) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, titles = EXCLUDED.titles, photo_url = EXCLUDED.photo_url, introduction = EXCLUDED.introduction, specialties = EXCLUDED.specialties, experience = EXCLUDED.experience;
     `);
     await client.query(`DELETE FROM education WHERE doctor_id = 1;`); // Limpiar educación vieja antes de insertar
     await client.query(`
         INSERT INTO education (doctor_id, degree, institution, location) VALUES
-        (1, 'Doctor en Medicina (MD)', 'Universidad de Miami Miller School of Medicine', 'Miami, FL'),
-        (1, 'Residencia en Medicina Interna', 'Jackson Memorial Hospital', 'Miami, FL'),
-        (1, 'Fellow of the American College of Physicians (FACP)', 'American College of Physicians', 'Filadelfia, PA'),
-        (1, 'Certificación en Acupuntura Médica para Médicos', 'Helms Medical Institute', 'Berkeley, CA');
+        (1, 'Médico', 'Universidad de La Habana', 'Cuba'),
+        (1, 'Especialización en Acupuntura y Medicina Tradicional China', 'Acupuncture and Massage College', 'Miami, FL'),
+        (1, 'Doctorado en Medicina Homeopática (PhD)', 'Universidad Internacional de Cambridge', '');
     `);
 
     // --- PASO 5: Poblar la tabla de servicios de forma inteligente ---
@@ -341,19 +341,19 @@ export const initializeDatabase = async () => {
         { id: 'doctors-healthcare', name: 'Doctors Healthcare Plans', brandColor: '#1E90FF' },
         { id: 'simply', name: 'Simply Healthcare', brandColor: '#00AEEF' },
         { id: 'sunshine', name: 'Sunshine Health', brandColor: '#FFC72C' },
-        { id: 'uhc', name: 'UnitedHealthcare', brandColor: '#00549A' },
-        { id: 'medicare', name: 'Medicare', brandColor: '#B0B0B0' },
+        { id: 'careplus', name: 'Care Plus', brandColor: '#FDB813' },
+        { id: 'healthsun', name: 'Health Sun', brandColor: '#00A79D' },
     ];
     for (const ins of insurances) {
         await client.query(
-            `INSERT INTO insurances (id, name, brand_color) VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING`,
+            `INSERT INTO insurances (id, name, brand_color) VALUES ($1, $2, $3) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, brand_color = EXCLUDED.brand_color`,
             [ins.id, ins.name, ins.brandColor]
         );
     }
     console.log('Insurances seeded.');
 
     // Seed some accepted insurances (siempre se resetea)
-    const acceptedInsurances = ['bcbs', 'uhc', 'aetna', 'cigna', 'medicare'];
+    const acceptedInsurances = ['bcbs', 'aetna', 'cigna', 'careplus', 'healthsun'];
     await client.query('DELETE FROM accepted_insurances;'); // Limpiar antes de insertar
     for (const insId of acceptedInsurances) {
         await client.query(

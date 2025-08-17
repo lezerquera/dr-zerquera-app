@@ -38,6 +38,7 @@ export interface DetailedInfo {
   treats: string[];
   process: string[];
   frequency: string;
+  safety: string;
   specialOffer?: {
     oldPrice: string;
     newPrice: string;
@@ -61,11 +62,24 @@ export interface Appointment {
 
 export interface ChatMessage {
   id: number;
-  sender: string; // Name of the user
-  senderRole: 'patient' | 'doctor' | 'system' | 'admin';
+  sender: string; // Name of the user, e.g., "Admin User" or "John Doe"
+  senderId: number;
+  senderRole: 'admin' | 'patient' | 'system';
+  recipientId: number;
   text: string;
   timestamp: string;
+  isRead: boolean;
 }
+
+// For the admin's conversation list view
+export interface Conversation {
+  patientId: number;
+  patientName: string;
+  lastMessage: string;
+  lastMessageTimestamp: string;
+  unreadCount: number;
+}
+
 
 export interface ClinicInfo {
   name: string;

@@ -1,4 +1,5 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
+import type { Request, Response } from 'express';
 import cors, { CorsOptions } from 'cors';
 import dotenv from 'dotenv';
 import path from 'path'; // Importamos el módulo 'path' de Node.js
@@ -11,6 +12,7 @@ import { chatMessagesRouter } from './api/chat';
 import { insurancesRouter } from './api/insurances';
 import { authRouter } from './api/auth';
 import { setupRouter } from './api/setup';
+import { usersRouter } from './api/users';
 import './middleware/auth';
 
 dotenv.config();
@@ -54,11 +56,12 @@ app.use(express.json());
 // IMPORTANTE: Las rutas de la API deben registrarse ANTES de servir los archivos estáticos.
 // Esto asegura que las peticiones a /api/* sean manejadas por el backend y no por el frontend.
 app.use('/api/auth', authRouter);
+app.use('/api/users', usersRouter);
 app.use('/api/clinic-info', clinicInfoRouter);
 app.use('/api/doctor-profile', doctorProfileRouter);
 app.use('/api/services', servicesRouter);
 app.use('/api/appointments', appointmentsRouter);
-app.use('/api/chat-messages', chatMessagesRouter);
+app.use('/api/chat', chatMessagesRouter);
 app.use('/api/insurances', insurancesRouter);
 app.use('/api/setup', setupRouter); // Ruta de inicialización refactorizada
 

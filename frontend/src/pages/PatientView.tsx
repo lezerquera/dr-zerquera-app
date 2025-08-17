@@ -4,7 +4,7 @@ import type { DoctorProfile, Service, Appointment, ChatMessage, ClinicInfo, Insu
 import { 
     CalendarIcon, UsersIcon, StethoscopeIcon, MessageSquareIcon, ClipboardIcon, SparklesIcon, SendIcon, 
     CheckCircleIcon, TargetIcon, RefreshCwIcon, ClockIcon, ShieldIcon, MapPinIcon, PhoneIcon,
-    WhatsAppIcon, LightbulbIcon, GraduationCapIcon, BriefcaseIcon, AlertTriangleIcon
+    WhatsAppIcon, LightbulbIcon, GraduationCapIcon, BriefcaseIcon, AlertTriangleIcon, BuildingIcon, DesktopIcon
 } from '../components/Icons';
 import { PageWrapper } from '../components/PageWrapper';
 import { Modal } from '../components/Modal';
@@ -13,6 +13,7 @@ import { InsuranceCarousel } from '../components/InsuranceCarousel';
 
 interface PatientViewProps {
   user: User;
+  adminId: number | null;
   doctorProfile: DoctorProfile;
   services: Service[];
   appointments: Appointment[];
@@ -20,7 +21,7 @@ interface PatientViewProps {
   clinicInfo: ClinicInfo;
   acceptedInsurances: Insurance[];
   requestAppointment: (appointment: Omit<Appointment, 'id' | 'status' | 'date' | 'time' | 'patientId'>) => void;
-  sendChatMessage: (message: Omit<ChatMessage, 'id' | 'timestamp'>) => void;
+  sendChatMessage: (message: Omit<ChatMessage, 'id' | 'timestamp' | 'sender' | 'senderId' | 'senderRole' | 'isRead'>) => void;
 }
 
 const PatientView: React.FC<PatientViewProps> = (props) => {
@@ -41,7 +42,7 @@ const PatientView: React.FC<PatientViewProps> = (props) => {
                     <Route path="services" element={<ServicesList services={props.services} clinicInfo={props.clinicInfo} />} />
                     <Route path="dr-zerquera" element={<DoctorProfilePage doctorProfile={props.doctorProfile} />} />
                     <Route path="appointments" element={<AppointmentRequestForm services={props.services} requestAppointment={props.requestAppointment} clinicInfo={props.clinicInfo} user={props.user} />} />
-                    <Route path="chat" element={<ChatInterface messages={props.chatMessages} onSendMessage={props.sendChatMessage} user={props.user} />} />
+                    <Route path="chat" element={<ChatInterface messages={props.chatMessages} onSendMessage={props.sendChatMessage} user={props.user} adminId={props.adminId} />} />
                 </Routes>
             </div>
         </div>
@@ -75,9 +76,141 @@ const QuickActionCard = ({ to, icon, title, description }: { to: string; icon: R
     </Link>
 );
 
+const AppointmentHistory = ({ appointments }: { appointments: Appointment[] }) => {
+    const requested = appointments.filter(a => a.status === 'Solicitada');
+    const confirmed = appointments.filter(a => a.status === 'Confirmada');
+    const past = appointments.filter(a => a.status !== 'Solicitada' && a.status !== 'Confirmada');
+
+    const formatDate = (dateString: string) => {
+        const parts = dateString.split('-');
+        if (parts.length !== 3) return "Fecha inválida";
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1; // JS months are 0-indexed
+        const day = parseInt(parts[2], 10);
+        const date = new Date(Date.UTC(year, month, day));
+        return date.toLocaleDateString('es-ES', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            timeZone: 'UTC' // Important to match the UTC creation
+        });
+    };
+
+    const AppointmentCard = ({ app }: { app: Appointment }) => {
+        const getStatusChip = (status: Appointment['status']) => {
+            switch (status) {
+                case 'Confirmada': return 'bg-accent-turquoise/10 text-accent-turquoise border-accent-turquoise';
+                case 'Solicitada': return 'bg-accent-red/10 text-accent-red border-accent-red';
+                default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 border-gray-400';
+            }
+        }
+        return (
+             <li className="p-4 bg-bg-main dark:bg-border-dark rounded-lg shadow-sm">
+                <div className="flex justify-between items-start">
+                    <p className="font-bold text-main dark:text-text-light">{app.service?.name || "Servicio no especificado"}</p>
+                    <span className={`px-2 py-0.5 text-xs font-semibold rounded-full border ${getStatusChip(app.status)}`}>{app.status}</span>
+                </div>
+                 <div className="mt-3 pt-3 border-t border-border-main dark:border-border-dark text-sm space-y-2">
+                    {app.status === 'Confirmada' ? (
+                        <>
+                            <div className="flex items-center gap-2 text-muted dark:text-text-muted-dark">
+                                <CalendarIcon className="w-4 h-4" />
+                                <span>{app.date ? formatDate(app.date) : 'Fecha por confirmar'}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-muted dark:text-text-muted-dark">
+                                <ClockIcon className="w-4 h-4" />
+                                <span>{app.time || 'Hora por confirmar'}</span>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="flex items-center gap-2 text-muted dark:text-text-muted-dark">
+                             <p className="italic">Nuestro equipo se pondrá en contacto pronto para confirmar los detalles.</p>
+                        </div>
+                    )}
+                </div>
+            </li>
+        )
+    };
+
+    return (
+         <div className="bg-bg-alt dark:bg-bg-alt p-6 rounded-xl shadow-md">
+            <h3 className="text-xl font-semibold mb-4 text-accent-turquoise dark:text-primary flex items-center gap-2"><CalendarIcon className="w-6 h-6" /> Mis Citas</h3>
+            {appointments.length === 0 ? (
+                 <div className="text-center flex-grow flex flex-col items-center justify-center p-4 border-2 border-dashed border-border-main dark:border-border-dark rounded-lg">
+                    <CalendarIcon className="w-12 h-12 text-muted dark:text-muted mb-3" />
+                    <p className="text-muted dark:text-muted mb-4 font-medium">No tiene citas registradas.</p>
+                    <Link to="appointments" className="bg-primary hover:opacity-90 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-opacity text-sm">
+                        Solicitar una Cita
+                    </Link>
+                </div>
+            ) : (
+                 <div className="space-y-6">
+                    {requested.length > 0 && (
+                        <div>
+                            <h4 className="font-bold text-main dark:text-main mb-2">Solicitudes Pendientes</h4>
+                            <ul className="space-y-3"><AppointmentCard app={requested[0]}/></ul>
+                        </div>
+                    )}
+                    {confirmed.length > 0 && (
+                        <div>
+                            <h4 className="font-bold text-main dark:text-main mb-2">Próximas Citas</h4>
+                            <ul className="space-y-3">{confirmed.map(app => <AppointmentCard key={app.id} app={app}/>)}</ul>
+                        </div>
+                    )}
+                     {past.length > 0 && (
+                        <div>
+                            <h4 className="font-bold text-main dark:text-main mb-2">Historial</h4>
+                            <ul className="space-y-3">{past.map(app => <AppointmentCard key={app.id} app={app}/>)}</ul>
+                        </div>
+                    )}
+                </div>
+            )}
+         </div>
+    )
+};
+
+const ClinicContactInfo = ({ clinicInfo }: { clinicInfo: ClinicInfo }) => {
+    const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(clinicInfo.address)}`;
+    
+    return (
+        <div className="bg-bg-alt dark:bg-bg-alt p-6 rounded-xl shadow-md">
+            <h3 className="text-xl font-semibold mb-4 text-accent-turquoise dark:text-primary flex items-center gap-2">
+                <BuildingIcon className="w-6 h-6" /> Información de Contacto
+            </h3>
+            <div className="space-y-4 text-main dark:text-main">
+                <div className="flex items-start gap-3">
+                    <MapPinIcon className="w-5 h-5 mt-1 text-muted dark:text-muted flex-shrink-0" />
+                    <div>
+                        <p className="font-semibold">Ubicación</p>
+                        <a href={googleMapsUrl} target="_blank" rel="noopener noreferrer" className="text-muted dark:text-main/80 hover:text-primary dark:hover:text-accent-turquoise hover:underline">
+                            {clinicInfo.address}
+                        </a>
+                    </div>
+                </div>
+                <div className="flex items-start gap-3">
+                    <PhoneIcon className="w-5 h-5 mt-1 text-muted dark:text-muted flex-shrink-0" />
+                    <div>
+                        <p className="font-semibold">Contacto</p>
+                        <a href={`tel:${clinicInfo.phone.replace(/\D/g, '')}`} className="text-muted dark:text-main/80 hover:text-primary dark:hover:text-accent-turquoise hover:underline">
+                            {clinicInfo.phone}
+                        </a>
+                    </div>
+                </div>
+                <div className="flex items-start gap-3">
+                    <DesktopIcon className="w-5 h-5 mt-1 text-muted dark:text-muted flex-shrink-0" />
+                    <div>
+                        <p className="font-semibold">Sitio Web</p>
+                        <a href={`https://${clinicInfo.website}`} target="_blank" rel="noopener noreferrer" className="text-muted dark:text-main/80 hover:text-primary dark:hover:text-accent-turquoise hover:underline">
+                            {clinicInfo.website}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const Dashboard = ({ appointments, clinicInfo, acceptedInsurances }: { appointments: Appointment[], clinicInfo: ClinicInfo, acceptedInsurances: Insurance[] }) => {
-    const upcomingAppointments = appointments.filter(a => a.date && new Date(a.date) >= new Date() && a.status === 'Confirmada');
     
     return (
         <PageWrapper title="Panel del Paciente">
@@ -125,37 +258,8 @@ const Dashboard = ({ appointments, clinicInfo, acceptedInsurances }: { appointme
 
                 {/* Sidebar */}
                 <div className="lg:col-span-1 space-y-8">
-                    {/* Upcoming Appointments */}
-                    <div className="bg-bg-alt dark:bg-bg-alt p-6 rounded-xl shadow-md h-full flex flex-col">
-                        <h3 className="text-xl font-semibold mb-4 text-accent-turquoise dark:text-primary flex items-center gap-2"><CalendarIcon className="w-6 h-6" /> Próximas Citas</h3>
-                        {upcomingAppointments.length > 0 ? (
-                            <ul className="space-y-4">
-                                {upcomingAppointments.map(app => (
-                                    <li key={app.id} className="p-4 bg-bg-main dark:bg-border-dark rounded-lg shadow-sm border-l-4 border-accent-turquoise">
-                                        <p className="font-bold text-main dark:text-text-light">{app.service.name}</p>
-                                        <div className="mt-3 pt-3 border-t border-border-main dark:border-border-dark text-sm space-y-2">
-                                            <div className="flex items-center gap-2 text-muted dark:text-text-muted-dark">
-                                                <CalendarIcon className="w-4 h-4" />
-                                                <span>{app.date ? new Date(`${app.date}T00:00:00`).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Fecha por confirmar'}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2 text-muted dark:text-text-muted-dark">
-                                                <ClockIcon className="w-4 h-4" />
-                                                <span>{app.time || 'Hora por confirmar'}</span>
-                                            </div>
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : (
-                            <div className="text-center flex-grow flex flex-col items-center justify-center p-4 border-2 border-dashed border-border-main dark:border-border-dark rounded-lg">
-                                <CalendarIcon className="w-12 h-12 text-muted dark:text-muted mb-3" />
-                                <p className="text-muted dark:text-muted mb-4 font-medium">No tiene citas próximas.</p>
-                                <Link to="appointments" className="bg-primary hover:opacity-90 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-opacity text-sm">
-                                    Solicitar una Cita
-                                </Link>
-                            </div>
-                        )}
-                    </div>
+                     <AppointmentHistory appointments={appointments} />
+                     <ClinicContactInfo clinicInfo={clinicInfo} />
                 </div>
             </div>
 
@@ -208,6 +312,10 @@ const ServicesList = ({ services, clinicInfo }: { services: Service[], clinicInf
                                     <span className="text-muted dark:text-muted font-medium">Duración:</span>
                                     <span className="font-semibold text-main dark:text-main">{service.duration}</span>
                                 </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-muted dark:text-muted font-medium">Precio:</span>
+                                    <span className="font-semibold text-main dark:text-main">{service.price}</span>
+                                </div>
                             </div>
 
                             <div className="mt-auto pt-4 flex gap-4">
@@ -230,9 +338,16 @@ const ServicesList = ({ services, clinicInfo }: { services: Service[], clinicInf
 const ServiceDetailModal = ({ service, clinicInfo, onClose }: { service: Service; clinicInfo: ClinicInfo; onClose: () => void; }) => {
     const { detailedInfo } = service;
     const offer = detailedInfo.specialOffer;
-    const savings = offer && offer.oldPrice && offer.newPrice && !isNaN(parseFloat(offer.oldPrice)) && !isNaN(parseFloat(offer.newPrice))
-        ? parseFloat(offer.oldPrice) - parseFloat(offer.newPrice)
-        : 0;
+    
+    const shouldShowOffer = offer && typeof offer.newPrice === 'string' && offer.newPrice.trim() !== '';
+
+    const cleanPrice = (priceStr: string | undefined): number => {
+        if (!priceStr) return NaN;
+        // Elimina símbolos de moneda, comas, espacios y deja solo números y un punto decimal.
+        return parseFloat(priceStr.replace(/[^0-9.]+/g, ''));
+    };
+
+    const savings = shouldShowOffer && offer.oldPrice ? cleanPrice(offer.oldPrice) - cleanPrice(offer.newPrice) : 0;
 
     return (
         <Modal isOpen={true} onClose={onClose} title={service.name}>
@@ -277,7 +392,7 @@ const ServiceDetailModal = ({ service, clinicInfo, onClose }: { service: Service
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 my-8 text-center">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 my-8 text-center">
                     <div className="p-4 bg-bg-alt dark:bg-bg-alt rounded-lg flex flex-col items-center justify-center">
                         <ClockIcon className="w-8 h-8 mb-2 text-accent-turquoise"/>
                         <h4 className="font-bold">Duración</h4>
@@ -288,15 +403,20 @@ const ServiceDetailModal = ({ service, clinicInfo, onClose }: { service: Service
                         <h4 className="font-bold">Frecuencia</h4>
                         <p className="text-muted dark:text-main/80">{detailedInfo.frequency}</p>
                     </div>
+                    <div className="p-4 bg-bg-alt dark:bg-bg-alt rounded-lg flex flex-col items-center justify-center">
+                        <ShieldIcon className="w-8 h-8 mb-2 text-accent-turquoise"/>
+                        <h4 className="font-bold">Seguridad</h4>
+                        <p className="text-muted dark:text-main/80">{detailedInfo.safety}</p>
+                    </div>
                 </div>
 
-                {offer && offer.newPrice && (
+                {shouldShowOffer && (
                     <div className="mb-8 border-2 border-accent-red rounded-lg p-6 text-center bg-accent-red/10">
                         <h3 className="text-xl font-bold text-accent-red tracking-wider">OFERTA ESPECIAL</h3>
                         <div className="flex items-baseline justify-center flex-wrap gap-x-4 gap-y-2 my-3">
                             {offer.oldPrice && <span className="text-2xl text-muted line-through">${offer.oldPrice}</span>}
                             <span className="text-5xl font-bold text-primary dark:text-main">${offer.newPrice}</span>
-                            {savings > 0 && <span className="text-lg font-semibold text-accent-turquoise bg-accent-turquoise/10 px-2 py-1 rounded">Ahorra ${savings}</span>}
+                            {savings > 0 && <span className="text-lg font-semibold text-accent-turquoise bg-accent-turquoise/10 px-2 py-1 rounded">Ahorra ${savings.toFixed(2)}</span>}
                         </div>
                         <p className="text-lg font-semibold text-main dark:text-main">{offer.description}</p>
                         <p className="text-sm text-muted mt-2">¡Oferta limitada! Contacte ahora</p>
@@ -518,13 +638,13 @@ const AppointmentRequestForm = ({ services, requestAppointment, clinicInfo, user
     );
 };
 
-const ChatInterface = ({ messages, onSendMessage, user }: { messages: ChatMessage[], onSendMessage: (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => void, user: User }) => {
+const ChatInterface = ({ messages, onSendMessage, user, adminId }: { messages: ChatMessage[], onSendMessage: PatientViewProps['sendChatMessage'], user: User, adminId: number | null }) => {
     const [newMessage, setNewMessage] = useState('');
     const [isSummarizing, setIsSummarizing] = useState(false);
     
     const handleSend = () => {
-        if (newMessage.trim()) {
-            onSendMessage({ sender: user.name, senderRole: 'patient', text: newMessage });
+        if (newMessage.trim() && adminId) {
+            onSendMessage({ text: newMessage, recipientId: adminId });
             setNewMessage('');
         }
     };
@@ -532,7 +652,8 @@ const ChatInterface = ({ messages, onSendMessage, user }: { messages: ChatMessag
     const handleSummary = async () => {
         setIsSummarizing(true);
         const summary = await generateChatSummary(messages);
-        onSendMessage({ sender: 'system', senderRole: 'system', text: summary });
+        // This is a local system message, not sent to backend.
+        // onSendMessage({ sender: 'system', senderRole: 'system', text: summary });
         setIsSummarizing(false);
     };
 
@@ -540,7 +661,7 @@ const ChatInterface = ({ messages, onSendMessage, user }: { messages: ChatMessag
         <PageWrapper title="Chat con su Médico">
             <div className="flex flex-col h-[60vh]">
                 <div className="flex-grow overflow-y-auto p-4 space-y-4 bg-bg-alt dark:bg-bg-main rounded-t-lg">
-                    {messages.map(msg => <ChatMessageBubble key={msg.id} message={msg} />)}
+                    {messages.map(msg => <ChatMessageBubble key={msg.id} message={msg} currentUser={user} />)}
                 </div>
                 <div className="p-4 border-t border-border-main dark:border-border-dark">
                     <div className="flex items-center gap-2 mb-2">
@@ -561,24 +682,14 @@ const ChatInterface = ({ messages, onSendMessage, user }: { messages: ChatMessag
     );
 };
 
-const ChatMessageBubble: React.FC<{ message: ChatMessage }> = ({ message }) => {
-    const isPatient = message.senderRole === 'patient';
-    const isSystem = message.senderRole === 'system';
-
-    if (isSystem) {
-        return (
-            <div className="my-2 p-4 bg-accent-red/10 border-l-4 border-accent-red rounded-r-lg">
-                <h4 className="font-bold text-accent-red flex items-center gap-2"><SparklesIcon className="w-5 h-5"/>Resumen de la Conversación</h4>
-                <p className="text-sm text-main dark:text-main whitespace-pre-wrap">{message.text}</p>
-            </div>
-        );
-    }
+const ChatMessageBubble: React.FC<{ message: ChatMessage, currentUser: User }> = ({ message, currentUser }) => {
+    const isCurrentUser = message.senderId === currentUser.id;
     
     return (
-        <div className={`flex items-end gap-2 ${isPatient ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-md p-3 rounded-lg ${isPatient ? 'bg-accent-warm text-primary rounded-br-none' : 'bg-bg-alt dark:bg-border-dark text-main dark:text-white rounded-bl-none'}`}>
+        <div className={`flex items-end gap-2 ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-md p-3 rounded-lg ${isCurrentUser ? 'bg-accent-warm text-primary rounded-br-none' : 'bg-bg-alt dark:bg-border-dark text-main dark:text-white rounded-bl-none'}`}>
                 <p className="text-sm">{message.text}</p>
-                <p className={`text-xs mt-1 ${isPatient ? 'text-primary/70' : 'text-muted dark:text-white/70'}`}>{message.timestamp}</p>
+                <p className={`text-xs mt-1 ${isCurrentUser ? 'text-primary/70' : 'text-muted dark:text-white/70'}`}>{message.timestamp}</p>
             </div>
         </div>
     );
