@@ -71,7 +71,7 @@ export const Logo = ({ className }: { className?: string }) => (
     <img 
       src="/assets/zimi-logo.png"
       alt="ZIMI Logo" 
-      className={className} 
+      className={`${className} object-contain`} 
     />
 );
 

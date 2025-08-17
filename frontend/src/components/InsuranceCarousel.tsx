@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import type { Insurance } from '../types';
 import { ShieldIcon, ChevronLeftIcon, ChevronRightIcon } from './Icons';
 
@@ -8,11 +8,13 @@ interface InsuranceCarouselProps {
 
 export const InsuranceCarousel: React.FC<InsuranceCarouselProps> = ({ insurances }) => {
     const scrollRef = useRef<HTMLUListElement>(null);
+    const [isHovered, setIsHovered] = useState(false);
+    const intervalRef = useRef<number | null>(null);
 
     if (!insurances || insurances.length === 0) {
         return null;
     }
-
+    
     const scroll = (direction: 'left' | 'right') => {
         if (scrollRef.current) {
             const scrollAmount = direction === 'left' ? -300 : 300;
@@ -20,10 +22,46 @@ export const InsuranceCarousel: React.FC<InsuranceCarouselProps> = ({ insurances
         }
     };
 
+    const startAutoScroll = useCallback(() => {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        intervalRef.current = window.setInterval(() => {
+            if (scrollRef.current) {
+                const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+                // If scrolled to the end, jump back to the start
+                if (scrollLeft + clientWidth >= scrollWidth - 1) {
+                    scrollRef.current.scrollTo({ left: 0, behavior: 'auto' });
+                } else {
+                    scrollRef.current.scrollBy({ left: 300, behavior: 'smooth' });
+                }
+            }
+        }, 3000); // Scroll every 3 seconds
+    }, []);
+
+    const stopAutoScroll = () => {
+        if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+        }
+    };
+
+    useEffect(() => {
+        if (!isHovered) {
+            startAutoScroll();
+        } else {
+            stopAutoScroll();
+        }
+        return () => stopAutoScroll();
+    }, [isHovered, startAutoScroll]);
+
+
     return (
         <div className="py-8 bg-bg-alt dark:bg-bg-alt/50">
             <h2 className="text-2xl font-bold text-center text-main dark:text-text-main mb-8">Seguros que Aceptamos</h2>
-            <div className="relative w-full max-w-6xl mx-auto px-12">
+            <div 
+                className="relative w-full max-w-6xl mx-auto px-12"
+                onMouseEnter={() => setIsHovered(true)}
+                onMouseLeave={() => setIsHovered(false)}
+            >
                 <div className="overflow-hidden">
                     <ul ref={scrollRef} className="flex items-stretch gap-8 overflow-x-auto pb-4 scroll-smooth snap-x snap-mandatory no-scrollbar">
                         {insurances.map((insurance) => (

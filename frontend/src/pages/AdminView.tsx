@@ -108,7 +108,7 @@ const getUrgencyChipClasses = (urgency: Appointment['urgency']) => {
 }
 
 const ScheduleAppointmentModal = ({ appointment, onClose, onSave }: { appointment: Appointment; onClose: () => void; onSave: (date: string, time: string) => void; }) => {
-    const [date, setDate] = useState(appointment.date || new Date().toISOString().split('T')[0]);
+    const [date, setDate] = useState(appointment.date ? appointment.date.split('T')[0] : new Date().toISOString().split('T')[0]);
     const [time, setTime] = useState(appointment.time || '09:00');
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -143,6 +143,29 @@ const ScheduleAppointmentModal = ({ appointment, onClose, onSave }: { appointmen
 
 const AppointmentsManager = ({ appointments, confirmAppointment }: { appointments: Appointment[]; confirmAppointment: (id: number, date: string, time: string) => void }) => {
     const [schedulingAppointment, setSchedulingAppointment] = useState<Appointment | null>(null);
+
+    const formatAdminAppointmentDate = (dateStr?: string, timeStr?: string): string => {
+        if (!dateStr || !timeStr) return "Fecha/Hora no asignada";
+        
+        const datePart = dateStr.split('T')[0];
+        const combinedISO = `${datePart}T${timeStr}`;
+        const date = new Date(combinedISO);
+
+        if (isNaN(date.getTime())) {
+            return "Fecha inválida";
+        }
+        
+        // Asumimos que la fecha/hora guardada es la local de la clínica (ej. Miami)
+        // Usamos toLocaleString que respeta el timezone del navegador del admin, lo cual es intuitivo.
+        return date.toLocaleString('es-ES', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+    };
     
     return (
          <PageWrapper title="Seguimiento de Citas">
@@ -182,9 +205,9 @@ const AppointmentsManager = ({ appointments, confirmAppointment }: { appointment
                                         </div>
                                     </div>
                                 )}
-                                {app.status === 'Confirmada' && app.date && app.time && (
+                                {app.status === 'Confirmada' && (
                                     <div className="mt-3 pt-3 border-t border-border-main dark:border-border-dark">
-                                        <p className="text-sm font-medium text-main dark:text-main">{new Date(`${app.date}T${app.time}`).toLocaleString('es-ES', { dateStyle: 'full', timeStyle: 'short' })}</p>
+                                        <p className="text-sm font-medium text-main dark:text-main">{formatAdminAppointmentDate(app.date, app.time)}</p>
                                         <p className="text-sm text-muted dark:text-muted">Con: Dr. Zerquera</p>
                                     </div>
                                 )}
