@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import type { ClinicInfo, Service, DoctorProfile, EducationItem, Appointment, DetailedInfo, Insurance, Conversation, ChatMessage, User } from '../types';
 import { PageWrapper } from '../components/PageWrapper';
 import { Modal } from '../components/Modal';
-import { BuildingIcon, StethoscopeIcon, UsersIcon, PlusCircleIcon, EditIcon, TrashIcon, ClockIcon, CheckCircleIcon, GraduationCapIcon, CreditCardIcon, ShieldIcon, MessageSquareIcon, SendIcon, CalendarIcon } from '../components/Icons';
+import { BuildingIcon, StethoscopeIcon, UsersIcon, PlusCircleIcon, EditIcon, TrashIcon, ClockIcon, CheckCircleIcon, GraduationCapIcon, CreditCardIcon, ShieldIcon, MessageSquareIcon, SendIcon, CalendarIcon, AlertTriangleIcon } from '../components/Icons';
 
 interface AdminViewProps {
   user: User;
@@ -218,6 +218,7 @@ const ClinicInfoManager = ({ clinicInfo, saveClinicInfo }: Pick<AdminViewProps, 
     const [info, setInfo] = useState(clinicInfo);
     const [hasChanges, setHasChanges] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [isInitializing, setIsInitializing] = useState(false);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setInfo({ ...info, [e.target.name]: e.target.value });
@@ -230,6 +231,29 @@ const ClinicInfoManager = ({ clinicInfo, saveClinicInfo }: Pick<AdminViewProps, 
         setHasChanges(false);
         setIsSaving(false);
         alert("Información guardada con éxito.");
+    };
+
+    const handleInitializeDatabase = async () => {
+        if (!window.confirm("¿ESTÁ SEGURO?\n\nEsta acción borrará y reiniciará COMPLETAMENTE la base de datos de producción con los datos iniciales. Perderá todos los pacientes, citas y chats existentes.\n\nEsta acción es irreversible.")) {
+            return;
+        }
+
+        setIsInitializing(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}/setup/initialize`, {
+                method: 'POST'
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.error || 'No se pudo reiniciar la base de datos');
+            }
+            alert("Éxito: La base de datos ha sido reiniciada. La página se recargará para reflejar los cambios.");
+            window.location.reload();
+        } catch (err) {
+            alert(`Error: ${err instanceof Error ? err.message : 'Ocurrió un error desconocido.'}`);
+        } finally {
+            setIsInitializing(false);
+        }
     };
 
     return (
@@ -259,6 +283,25 @@ const ClinicInfoManager = ({ clinicInfo, saveClinicInfo }: Pick<AdminViewProps, 
                     <div className="pt-4 text-right">
                         <button onClick={handleSave} disabled={!hasChanges || isSaving} className="px-4 py-2 text-sm font-medium text-primary bg-accent-warm rounded-md hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed">
                             {isSaving ? 'Guardando...' : 'Guardar Cambios'}
+                        </button>
+                    </div>
+                </div>
+
+                <div className="mt-8 pt-6 border-t border-red-500/30">
+                    <h3 className="text-lg font-bold text-accent-red flex items-center gap-2">
+                        <AlertTriangleIcon className="w-6 h-6" />
+                        Zona de Peligro
+                    </h3>
+                    <p className="text-sm text-muted dark:text-main/80 mt-2">
+                        La siguiente acción es destructiva y solo debe usarse durante la configuración inicial del sistema o en caso de emergencia.
+                    </p>
+                    <div className="mt-4">
+                        <button 
+                            onClick={handleInitializeDatabase} 
+                            disabled={isInitializing}
+                            className="w-full bg-accent-red hover:opacity-90 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-opacity disabled:opacity-50 disabled:cursor-wait"
+                        >
+                            {isInitializing ? 'Reiniciando Base de Datos...' : 'Reiniciar y Re-poblar Base de Datos'}
                         </button>
                     </div>
                 </div>

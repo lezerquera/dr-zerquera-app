@@ -1,6 +1,6 @@
-import express from 'express';
-import type { Request, Response } from 'express';
-import cors, { CorsOptions } from 'cors';
+import express, { type Request, type Response } from 'express';
+import cors from 'cors';
+import type { CorsOptions } from 'cors';
 import dotenv from 'dotenv';
 import path from 'path'; // Importamos el módulo 'path' de Node.js
 import pool from './db';

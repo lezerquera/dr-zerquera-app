@@ -1,17 +1,19 @@
-import express, { Request, Response } from 'express';
+import express, { type Request, type Response } from 'express';
 import { initializeDatabase } from '../init-db';
 
 const router = express.Router();
 
-// GET /api/setup/init-database-super-secret-key
-router.get('/init-database-super-secret-key', async (req: Request, res: Response) => {
-    console.log('Received request to initialize database via dedicated setup router...');
+// This is a sensitive endpoint and should be protected in a real application
+// e.g. with an environment variable secret key check.
+router.post('/initialize', async (req: Request, res: Response) => {
     try {
+        console.log("Attempting to initialize database via API...");
         await initializeDatabase();
-        res.status(200).send('✅ Base de datos inicializada con éxito. ¡Ya puedes cerrar esta ventana!');
+        res.status(200).json({ message: 'Database initialized successfully.' });
     } catch (error) {
-        console.error('Error during remote database initialization:', error);
-        res.status(500).send(`❌ Error al inicializar la base de datos: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+        const err = error as Error;
+        console.error('API Error: Failed to initialize database.', err.message);
+        res.status(500).json({ error: 'Database initialization failed.', details: err.message });
     }
 });
 
