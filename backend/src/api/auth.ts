@@ -5,7 +5,11 @@ import pool from '../db';
 import type { User } from '../shared/types';
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'your-default-secret-key-that-is-long-and-secure';
+
+// El chequeo de JWT_SECRET se hace en server.ts al arrancar.
+// Esto elimina la necesidad de una clave insegura por defecto.
+// Se usa '!' para asegurar a TypeScript que la variable existirá en este punto.
+const JWT_SECRET = process.env.JWT_SECRET!;
 
 // POST /api/auth/register
 router.post('/register', async (req: express.Request, res: express.Response) => {
@@ -23,11 +27,9 @@ router.post('/register', async (req: express.Request, res: express.Response) => 
         
         const passwordHash = await bcrypt.hash(password, 10);
 
-        // CORRECCIÓN MÁS ROBUSTA:
-        // Asegurarse de que cualquier valor "vacío" (null, undefined, '', ' ') para insuranceId
-        // se convierta en NULL para la base de datos, evitando errores de clave foránea.
-        const finalInsuranceId = (insuranceId && insuranceId.trim() !== '') ? insuranceId : null;
-
+        // CORRECCIÓN: Manejar explícitamente la cadena vacía como NULL.
+        // Si `insuranceId` es una cadena vacía (''), se convertirá en `null`.
+        const finalInsuranceId = insuranceId ? insuranceId : null;
 
         const newUserResult = await pool.query(
             'INSERT INTO users (email, password_hash, role, name, insurance_id) VALUES ($1, $2, $3, $4, $5) RETURNING id, email, role, name',

@@ -4,16 +4,10 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const dbUrl = process.env.DATABASE_URL;
-
-// Guard clause: check for existence and throw an error if missing.
-// This ensures the process stops and makes it clear to TypeScript
-// that dbUrl MUST be a string in the code that follows.
-if (!dbUrl) {
-    console.error("\n❌ ERROR: La variable de entorno DATABASE_URL no está configurada.");
-    console.error("Por favor, cree un archivo .env en el directorio 'backend' y añada su URL de conexión a PostgreSQL.");
-    throw new Error("❌ DATABASE_URL no está configurada.");
-}
+// La validación de DATABASE_URL ahora se realiza en `server.ts` al iniciar la aplicación.
+// Esto asegura que la aplicación falle rápidamente si la configuración es incorrecta.
+// Usamos el operador de aserción no nulo (!) porque el chequeo en server.ts garantiza que la variable existe.
+const dbUrl = process.env.DATABASE_URL!;
 
 const pool = new Pool({
   connectionString: dbUrl,

@@ -1,5 +1,3 @@
-
-
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import type { User } from '../shared/types';
@@ -14,7 +12,9 @@ declare global {
   }
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-default-secret-key-that-is-long-and-secure';
+// El chequeo de JWT_SECRET se hace en server.ts al arrancar.
+// Se usa '!' para asegurar a TypeScript que la variable existirá.
+const JWT_SECRET = process.env.JWT_SECRET!;
 
 export const verifyToken = (req: express.Request, res: express.Response, next: express.NextFunction) => {
     const authHeader = req.headers['authorization'];

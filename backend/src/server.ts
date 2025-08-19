@@ -1,4 +1,3 @@
-
 import express from 'express';
 import cors from 'cors';
 import { CorsOptions } from 'cors';
@@ -19,7 +18,20 @@ import './middleware/auth';
 
 dotenv.config();
 
-const app: express.Application = express();
+// --- VALIDACIÓN DE VARIABLES DE ENTORNO CRÍTICAS ---
+// La aplicación no debe iniciarse si falta configuración esencial.
+// Esto previene errores en tiempo de ejecución y mejora la seguridad.
+const requiredEnvVars = ['DATABASE_URL', 'JWT_SECRET'];
+for (const varName of requiredEnvVars) {
+    if (!process.env[varName]) {
+        const errorMessage = `\n❌ FATAL ERROR: La variable de entorno requerida '${varName}' no está configurada.\nPor favor, asegúrese de que esté definida en su archivo .env (local) o en la configuración del entorno (producción).\n`;
+        console.error(errorMessage);
+        process.exit(1); // Fail fast: detiene el proceso si falta configuración.
+    }
+}
+
+
+const app = express();
 const port = process.env.PORT || 3001;
 
 // --- Configuración de CORS Explícita y Segura ---
