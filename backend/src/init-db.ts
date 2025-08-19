@@ -1,3 +1,5 @@
+
+
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
 import * as bcrypt from 'bcryptjs';
@@ -177,18 +179,27 @@ export const initializeDatabase = async () => {
     console.log('▶️  Iniciando la inicialización de la base de datos...');
 
     console.log('    - Borrando tablas existentes...');
-    // Se ha cambiado para eliminar todas las tablas, incluyendo servicios, para una reinicialización limpia.
-    await client.query('DROP TABLE IF EXISTS users, accepted_insurances, insurances, chat_messages, appointments, services, education, doctor_profile, clinic_info CASCADE;');
+    await client.query('DROP TABLE IF EXISTS form_submissions, form_templates, users, accepted_insurances, insurances, chat_messages, appointments, services, education, doctor_profile, clinic_info CASCADE;');
 
     console.log('    - Recreando tablas...');
-    // Las sentencias CREATE TABLE permanecen iguales
+    
+     // insurances debe crearse antes que users si users va a tener una FK hacia ella.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS insurances (
+        id VARCHAR(255) PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        brand_color VARCHAR(20)
+      );
+    `);
+
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         email VARCHAR(255) UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
         role VARCHAR(50) NOT NULL CHECK (role IN ('admin', 'patient')),
-        name VARCHAR(255) NOT NULL
+        name VARCHAR(255) NOT NULL,
+        insurance_id VARCHAR(255) REFERENCES insurances(id) ON DELETE SET NULL
       );
     `);
     await client.query(`
@@ -258,20 +269,54 @@ export const initializeDatabase = async () => {
       );
     `);
     await client.query(`
-      CREATE TABLE IF NOT EXISTS insurances (
-        id VARCHAR(255) PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        brand_color VARCHAR(20)
-      );
-    `);
-    await client.query(`
       CREATE TABLE IF NOT EXISTS accepted_insurances (
         insurance_id VARCHAR(255) PRIMARY KEY REFERENCES insurances(id)
       );
     `);
+    
+    // Nuevas tablas para formularios dinámicos
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS form_templates (
+          id SERIAL PRIMARY KEY,
+          title VARCHAR(255) NOT NULL,
+          description TEXT,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          structure JSONB NOT NULL,
+          form_type VARCHAR(50) DEFAULT 'generic' NOT NULL
+      );
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS form_submissions (
+          id SERIAL PRIMARY KEY,
+          template_id INTEGER REFERENCES form_templates(id) ON DELETE CASCADE,
+          patient_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+          submission_date TIMESTAMPTZ DEFAULT NOW(),
+          answers JSONB NOT NULL,
+          priority VARCHAR(20)
+      );
+    `);
+
     console.log('    - Tablas creadas con éxito.');
     
     console.log('    - Insertando datos iniciales...');
+
+    // Seed Insurances (must happen before users with insurance_id)
+    const insurances = [
+        { id: 'aetna', name: 'Aetna', brandColor: '#00A3E0' }, { id: 'ambetter', name: 'Ambetter', brandColor: '#F15A29' }, { id: 'avmed', name: 'AvMed', brandColor: '#00558C' }, { id: 'bcbs', name: 'Blue Cross Blue Shield', brandColor: '#005EB8' }, { id: 'cigna', name: 'Cigna', brandColor: '#007DBA' }, { id: 'doctors-healthcare', name: 'Doctors Healthcare Plans', brandColor: '#1E90FF' }, { id: 'simply', name: 'Simply Healthcare', brandColor: '#00AEEF' }, { id: 'sunshine', name: 'Sunshine Health', brandColor: '#FFC72C' }, { id: 'careplus', name: 'Care Plus', brandColor: '#FDB813' }, { id: 'healthsun', name: 'Health Sun', brandColor: '#00A79D' },
+    ];
+    for (const ins of insurances) {
+        await client.query(
+            `INSERT INTO insurances (id, name, brand_color) VALUES ($1, $2, $3) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, brand_color = EXCLUDED.brand_color`,
+            [ins.id, ins.name, ins.brandColor]
+        );
+    }
+    const acceptedInsurances = ['bcbs', 'aetna', 'cigna', 'careplus', 'healthsun'];
+    await client.query('DELETE FROM accepted_insurances;');
+    for (const insId of acceptedInsurances) {
+        await client.query(`INSERT INTO accepted_insurances (insurance_id) VALUES ($1) ON CONFLICT (insurance_id) DO NOTHING`, [insId]);
+    }
+    console.log('      -> Seguros sembrados.');
 
     // Seed Admin User
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
@@ -313,22 +358,17 @@ export const initializeDatabase = async () => {
     }
     console.log(`      -> ${servicesToSeed.length} servicios sembrados.`);
 
-    // Seed Insurances
-    const insurances = [
-        { id: 'aetna', name: 'Aetna', brandColor: '#00A3E0' }, { id: 'ambetter', name: 'Ambetter', brandColor: '#F15A29' }, { id: 'avmed', name: 'AvMed', brandColor: '#00558C' }, { id: 'bcbs', name: 'Blue Cross Blue Shield', brandColor: '#005EB8' }, { id: 'cigna', name: 'Cigna', brandColor: '#007DBA' }, { id: 'doctors-healthcare', name: 'Doctors Healthcare Plans', brandColor: '#1E90FF' }, { id: 'simply', name: 'Simply Healthcare', brandColor: '#00AEEF' }, { id: 'sunshine', name: 'Sunshine Health', brandColor: '#FFC72C' }, { id: 'careplus', name: 'Care Plus', brandColor: '#FDB813' }, { id: 'healthsun', name: 'Health Sun', brandColor: '#00A79D' },
-    ];
-    for (const ins of insurances) {
-        await client.query(
-            `INSERT INTO insurances (id, name, brand_color) VALUES ($1, $2, $3) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, brand_color = EXCLUDED.brand_color`,
-            [ins.id, ins.name, ins.brandColor]
-        );
-    }
-    const acceptedInsurances = ['bcbs', 'aetna', 'cigna', 'careplus', 'healthsun'];
-    await client.query('DELETE FROM accepted_insurances;');
-    for (const insId of acceptedInsurances) {
-        await client.query(`INSERT INTO accepted_insurances (insurance_id) VALUES ($1) ON CONFLICT (insurance_id) DO NOTHING`, [insId]);
-    }
-    console.log('      -> Seguros sembrados.');
+    // Seed un formulario de ejemplo
+    const clinicalWizardForm = {
+        title: "Cuestionario de Admisión Clínica",
+        description: "Este formulario guiado nos ayuda a comprender su estado de salud actual. Por favor, complételo con la mayor precisión posible antes de su primera consulta.",
+        structure: [] // La estructura es manejada por el frontend en este caso, pero el registro existe.
+    };
+    await client.query(
+        'INSERT INTO form_templates (title, description, structure, form_type) VALUES ($1, $2, $3, $4)',
+        [clinicalWizardForm.title, clinicalWizardForm.description, JSON.stringify(clinicalWizardForm.structure), 'clinical_wizard']
+    );
+    console.log('      -> Formulario de Asistente Clínico sembrado.');
 
     await client.query('COMMIT');
     console.log('✅ ¡Éxito! La base de datos ha sido inicializada y los datos han sido sembrados.');
@@ -356,7 +396,7 @@ const main = async () => {
     console.error('--- ❌ El script de inicialización falló. Vea el error de arriba. ---');
     // El proceso se cerrará automáticamente debido al error no controlado,
     // pero se puede forzar si es necesario, aunque no es ideal.
-    process.exit(1);
+    (process as any).exit(1);
   }
 };
 

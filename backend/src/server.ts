@@ -1,4 +1,4 @@
-import express, { Request as ExpressRequest, Response as ExpressResponse } from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { CorsOptions } from 'cors';
 import dotenv from 'dotenv';
@@ -13,6 +13,7 @@ import { insurancesRouter } from './api/insurances';
 import { authRouter } from './api/auth';
 import { setupRouter } from './api/setup';
 import { usersRouter } from './api/users';
+import { formsRouter } from './api/forms'; // Importar el nuevo router
 import './middleware/auth';
 
 dotenv.config();
@@ -63,13 +64,14 @@ app.use('/api/services', servicesRouter);
 app.use('/api/appointments', appointmentsRouter);
 app.use('/api/chat', chatMessagesRouter);
 app.use('/api/insurances', insurancesRouter);
+app.use('/api/forms', formsRouter); // Añadir la nueva ruta de formularios
 app.use('/api/setup', setupRouter); // Ruta de inicialización refactorizada
 
-app.get('/api', (req: ExpressRequest, res: ExpressResponse) => {
+app.get('/api', (req: Request, res: Response) => {
     res.send('ZIMI Backend API is running!');
 });
 
-app.get('/api/health', async (req: ExpressRequest, res: ExpressResponse) => {
+app.get('/api/health', async (req: Request, res: Response) => {
     try {
         await pool.query('SELECT 1');
         res.status(200).send('Backend and database connection are healthy.');
@@ -91,19 +93,15 @@ if (process.env.NODE_ENV === 'production') {
 
     // --- Catch-all para servir el index.html del frontend ---
     // Esto es crucial para que el enrutamiento del lado del cliente (React Router) funcione.
-    app.get('*', (req: ExpressRequest, res: ExpressResponse) => {
+    app.get('*', (req: Request, res: Response) => {
         const indexPath = path.join(frontendDistPath, 'index.html');
         res.sendFile(indexPath, (err) => {
             if (err) {
-                console.error("Could not send index.html:", err);
-                res.status(504).send("Frontend application not found. Check build configuration.");
+                console.error('Error sending index.html:', err);
+                res.status(500).send('Internal server error while serving the application.');
             }
         });
     });
 }
 
-
-// The app.listen call is removed from this file.
-// It now lives in `local.ts` for local development.
-// This makes server.ts compatible with serverless environments.
 export default app;

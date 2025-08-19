@@ -1,4 +1,4 @@
-import express, { Request as ExpressRequest, Response as ExpressResponse } from 'express';
+import express from 'express';
 import * as bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
 import pool from '../db';
@@ -8,8 +8,8 @@ const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-default-secret-key-that-is-long-and-secure';
 
 // POST /api/auth/register
-router.post('/register', async (req: ExpressRequest, res: ExpressResponse) => {
-    const { email, password, name } = req.body;
+router.post('/register', async (req: express.Request, res: express.Response) => {
+    const { email, password, name, insuranceId } = req.body;
 
     if (!email || !password || !name) {
         return res.status(400).json({ error: 'All fields are required' });
@@ -23,9 +23,12 @@ router.post('/register', async (req: ExpressRequest, res: ExpressResponse) => {
         
         const passwordHash = await bcrypt.hash(password, 10);
 
+        // Use NULL for insuranceId if it's an empty string or not provided
+        const finalInsuranceId = insuranceId || null;
+
         const newUserResult = await pool.query(
-            'INSERT INTO users (email, password_hash, role, name) VALUES ($1, $2, $3, $4) RETURNING id, email, role, name',
-            [email, passwordHash, 'patient', name]
+            'INSERT INTO users (email, password_hash, role, name, insurance_id) VALUES ($1, $2, $3, $4, $5) RETURNING id, email, role, name',
+            [email, passwordHash, 'patient', name, finalInsuranceId]
         );
 
         const newUser: User = newUserResult.rows[0];
@@ -41,7 +44,7 @@ router.post('/register', async (req: ExpressRequest, res: ExpressResponse) => {
 });
 
 // POST /api/auth/login
-router.post('/login', async (req: ExpressRequest, res: ExpressResponse) => {
+router.post('/login', async (req: express.Request, res: express.Response) => {
     const { email, password } = req.body;
 
     if (!email || !password) {

@@ -3,6 +3,7 @@ export interface User {
   email: string;
   role: 'admin' | 'patient';
   name: string;
+  exp?: number;
 }
 
 export interface EducationItem {
@@ -109,4 +110,97 @@ export interface Insurance {
   id: string;
   name: string;
   brandColor: string;
+}
+
+// --- Nuevos tipos para Formularios Dinámicos ---
+
+export type QuestionType = 'text' | 'textarea' | 'select' | 'checkbox' | 'radio';
+
+export interface Question {
+  id: string; // Usar string para IDs temporales como Date.now()
+  type: QuestionType;
+  label: string;
+  options?: string[];
+  required: boolean;
+}
+
+export interface FormTemplate {
+  id: number;
+  title: string;
+  description: string;
+  structure: Question[];
+  formType: 'generic' | 'clinical_wizard';
+}
+
+export interface FormSubmission {
+  id: number;
+  template_id: number;
+  patient_id: number;
+  submission_date: string;
+  answers: Record<string, any> | ClinicalWizardAnswers;
+  priority?: 'high' | 'medium' | 'low';
+}
+
+// Tipo simplificado para la vista del paciente
+export interface PatientFormSubmission {
+    id: number;
+    submissionDate: string;
+    title: string;
+    templateId: number;
+}
+
+// --- Tipos para el nuevo Asistente Clínico ---
+export interface BodyPainPoint {
+  bodyPart: string;
+  painType: string;
+  intensity: number;
+  duration: string;
+  view: 'front' | 'back';
+}
+
+export interface ClinicalWizardAnswers {
+  generalData?: {
+    fullName: string;
+    age: string;
+    gender: string;
+    occupation: string;
+    contact: string;
+  };
+  consultationReason?: {
+    reason: string;
+    duration: string;
+  };
+  bodyMap?: BodyPainPoint[];
+  mtc?: {
+    coldHeat: 'Frío' | 'Calor';
+    dayNight: 'Día' | 'Noche';
+    fullEmpty: 'Plenitud' | 'Vacío';
+    onset: 'Agudo' | 'Crónico';
+  };
+  tongue?: string[];
+}
+
+
+// --- Nuevos tipos para la gestión de pacientes (Admin) ---
+
+export interface Patient {
+  id: number;
+  name: string;
+  email: string;
+  insuranceName?: string;
+}
+
+export interface PatientSubmissionDetail {
+    id: number;
+    submissionDate: string;
+    answers: Record<string, any> | ClinicalWizardAnswers;
+    title: string;
+    structure: Question[]; // Puede ser [] para el wizard
+    priority?: 'high' | 'medium' | 'low';
+}
+
+export interface PatientDetails {
+    patient: Patient;
+    submissions: PatientSubmissionDetail[];
+    appointments: Appointment[];
 }

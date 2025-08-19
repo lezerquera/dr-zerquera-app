@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import type { ClinicInfo, Service, DoctorProfile, EducationItem, Appointment, DetailedInfo, Insurance, Conversation, ChatMessage, User } from '../types';
+import type { ClinicInfo, Service, DoctorProfile, EducationItem, Appointment, DetailedInfo, Insurance, Conversation, ChatMessage, User, FormTemplate, Question, QuestionType, Patient, PatientDetails, PatientSubmissionDetail, ClinicalWizardAnswers } from '../types';
 import { PageWrapper } from '../components/PageWrapper';
 import { Modal } from '../components/Modal';
-import { BuildingIcon, StethoscopeIcon, UsersIcon, PlusCircleIcon, EditIcon, TrashIcon, ClockIcon, CheckCircleIcon, GraduationCapIcon, CreditCardIcon, ShieldIcon, MessageSquareIcon, SendIcon, CalendarIcon, AlertTriangleIcon } from '../components/Icons';
+import { BuildingIcon, StethoscopeIcon, UsersIcon, PlusCircleIcon, EditIcon, TrashIcon, ClockIcon, CheckCircleIcon, GraduationCapIcon, CreditCardIcon, ShieldIcon, MessageSquareIcon, SendIcon, CalendarIcon, AlertTriangleIcon, ClipboardListIcon, ChevronRightIcon } from '../components/Icons';
 
 interface AdminViewProps {
   user: User;
@@ -25,7 +25,7 @@ interface AdminViewProps {
   clearChatNotifications: () => void;
 }
 
-type AdminTab = 'appointments' | 'chat' | 'insurances' | 'services' | 'staff' | 'info';
+type AdminTab = 'appointments' | 'chat' | 'patients' | 'forms' | 'insurances' | 'services' | 'staff' | 'info';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -47,6 +47,8 @@ const AdminView: React.FC<AdminViewProps> = (props) => {
                 <nav className="flex flex-wrap gap-2 p-2" aria-label="Tabs">
                     <AdminTabButton id="appointments" activeTab={activeTab} setActiveTab={setActiveTab} icon={<CalendarIcon className="w-5 h-5"/>}>Citas</AdminTabButton>
                     <AdminTabButton id="chat" activeTab={activeTab} setActiveTab={setActiveTab} icon={<MessageSquareIcon className="w-5 h-5"/>} notificationCount={props.unreadChatCount}>Chat</AdminTabButton>
+                    <AdminTabButton id="patients" activeTab={activeTab} setActiveTab={setActiveTab} icon={<UsersIcon className="w-5 h-5"/>}>Pacientes</AdminTabButton>
+                    <AdminTabButton id="forms" activeTab={activeTab} setActiveTab={setActiveTab} icon={<ClipboardListIcon className="w-5 h-5"/>}>Formularios</AdminTabButton>
                     <AdminTabButton id="insurances" activeTab={activeTab} setActiveTab={setActiveTab} icon={<CreditCardIcon className="w-5 h-5"/>}>Seguros</AdminTabButton>
                     <AdminTabButton id="services" activeTab={activeTab} setActiveTab={setActiveTab} icon={<StethoscopeIcon className="w-5 h-5"/>}>Servicios</AdminTabButton>
                     <AdminTabButton id="staff" activeTab={activeTab} setActiveTab={setActiveTab} icon={<UsersIcon className="w-5 h-5"/>}>Dr. Zerquera</AdminTabButton>
@@ -57,6 +59,8 @@ const AdminView: React.FC<AdminViewProps> = (props) => {
             <div>
                 {activeTab === 'appointments' && <AppointmentsManager appointments={sortedAppointments} confirmAppointment={props.confirmAppointment} />}
                 {activeTab === 'chat' && <AdminChatManager user={props.user} token={props.token} sendChatMessage={props.sendChatMessage} fetchUnreadCount={props.fetchUnreadCount} clearChatNotifications={props.clearChatNotifications} />}
+                {activeTab === 'patients' && <PatientsManager token={props.token} />}
+                {activeTab === 'forms' && <FormsManager token={props.token} />}
                 {activeTab === 'insurances' && <InsurancesManager allInsurances={props.allInsurances} acceptedInsurances={props.acceptedInsurances} saveAcceptedInsurances={props.saveAcceptedInsurances} />}
                 {activeTab === 'services' && <ServicesManager services={props.services} saveService={props.saveService} deleteService={props.deleteService} />}
                 {activeTab === 'staff' && <DoctorProfileManager doctorProfile={props.doctorProfile} saveDoctorProfile={props.saveDoctorProfile} />}
@@ -695,8 +699,16 @@ const AdminChatManager = ({ user, token, sendChatMessage, fetchUnreadCount, clea
     const fetchConversations = useCallback(async () => {
         try {
             const res = await fetch(`${API_BASE_URL}/chat/conversations`, { headers: authHeader });
-            if (!res.ok) throw new Error('Failed to fetch conversations');
-            setConversations(await res.json());
+            if (res.ok) {
+                const newConversations = await res.json();
+                setConversations(prev => {
+                    // Avoid re-render if data is identical
+                    if (JSON.stringify(prev) !== JSON.stringify(newConversations)) {
+                        return newConversations;
+                    }
+                    return prev;
+                });
+            }
         } catch (error) {
             console.error(error);
         }
@@ -720,6 +732,13 @@ const AdminChatManager = ({ user, token, sendChatMessage, fetchUnreadCount, clea
         setIsLoading(true);
         fetchConversations().finally(() => setIsLoading(false));
     }, [fetchConversations]);
+
+    // Polling for new conversations/messages
+    useEffect(() => {
+        const interval = setInterval(fetchConversations, 15000); // Poll every 15 seconds
+        return () => clearInterval(interval);
+    }, [fetchConversations]);
+
 
     const handleSelectConversation = (patientId: number) => {
         setSelectedPatientId(patientId);
@@ -799,6 +818,481 @@ const AdminChatManager = ({ user, token, sendChatMessage, fetchUnreadCount, clea
                 </div>
             </div>
         </PageWrapper>
+    );
+};
+
+const FormsManager = ({ token }: { token: string }) => {
+    const [templates, setTemplates] = useState<FormTemplate[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingTemplate, setEditingTemplate] = useState<FormTemplate | null>(null);
+
+    const authHeader = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+
+    const fetchTemplates = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const res = await fetch(`${API_BASE_URL}/forms/templates`, { headers: { 'Authorization': `Bearer ${token}` } });
+            if (!res.ok) throw new Error('Failed to fetch form templates');
+            setTemplates(await res.json());
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [token]);
+
+    useEffect(() => {
+        fetchTemplates();
+    }, [fetchTemplates]);
+
+    const handleOpenModal = (template: FormTemplate | null = null) => {
+        setEditingTemplate(template);
+        setIsModalOpen(true);
+    };
+
+    const handleSaveTemplate = async (templateData: Omit<FormTemplate, 'id' | 'structure'> & { structure: Omit<Question, 'id'>[]}) => {
+        const url = editingTemplate ? `${API_BASE_URL}/forms/templates/${editingTemplate.id}` : `${API_BASE_URL}/forms/templates`;
+        const method = editingTemplate ? 'PUT' : 'POST';
+        
+        try {
+            const response = await fetch(url, { method, headers: authHeader, body: JSON.stringify(templateData) });
+            if (!response.ok) throw new Error('Failed to save template');
+            await fetchTemplates(); // Refresh list
+            setIsModalOpen(false);
+        } catch (error) {
+            console.error(error);
+            alert('Error al guardar el formulario.');
+        }
+    };
+
+    const handleDeleteTemplate = async (id: number) => {
+        if (window.confirm('¿Está seguro de que desea eliminar este formulario? Esta acción es irreversible.')) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/forms/templates/${id}`, { method: 'DELETE', headers: authHeader });
+                if (!response.ok) throw new Error('Failed to delete template');
+                await fetchTemplates(); // Refresh list
+            } catch (error) {
+                console.error(error);
+                alert('Error al eliminar el formulario.');
+            }
+        }
+    };
+
+    return (
+        <PageWrapper title="Gestor de Formularios">
+            <div className="flex justify-end mb-6">
+                <button onClick={() => handleOpenModal()} className="bg-primary hover:opacity-90 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition-opacity">
+                    <PlusCircleIcon className="w-5 h-5"/> Crear Formulario
+                </button>
+            </div>
+            {isLoading ? <p>Cargando formularios...</p> : (
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left text-muted dark:text-main/80">
+                        <thead className="text-xs text-main uppercase bg-bg-alt dark:text-main dark:bg-bg-alt">
+                            <tr>
+                                <th scope="col" className="px-6 py-3">Título</th>
+                                <th scope="col" className="px-6 py-3">Descripción</th>
+                                <th scope="col" className="px-6 py-3 text-right">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {templates.map(template => (
+                                <tr key={template.id} className="bg-bg-main border-b dark:bg-bg-main dark:border-border-dark hover:bg-bg-alt dark:hover:bg-bg-alt">
+                                    <td className="px-6 py-4 font-medium text-main whitespace-nowrap dark:text-main">{template.title}</td>
+                                    <td className="px-6 py-4">{template.description}</td>
+                                    <td className="px-6 py-4 text-right space-x-2">
+                                        <button onClick={() => handleOpenModal(template)} className="text-primary dark:text-accent-turquoise hover:opacity-80 p-1"><EditIcon className="w-5 h-5"/></button>
+                                        <button onClick={() => handleDeleteTemplate(template.id)} className="text-red-500 hover:text-red-700 p-1"><TrashIcon className="w-5 h-5"/></button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+            {isModalOpen && (
+                <FormBuilderModal
+                    template={editingTemplate}
+                    onSave={handleSaveTemplate}
+                    onClose={() => setIsModalOpen(false)}
+                />
+            )}
+        </PageWrapper>
+    );
+};
+
+const FormBuilderModal = ({ template, onSave, onClose }: { template: FormTemplate | null, onSave: (data: any) => void, onClose: () => void }) => {
+    const [title, setTitle] = useState(template?.title || '');
+    const [description, setDescription] = useState(template?.description || '');
+    const [questions, setQuestions] = useState<Question[]>(template?.structure || []);
+
+    const addQuestion = () => {
+        setQuestions([...questions, { id: Date.now().toString(), type: 'text', label: '', required: true, options: [] }]);
+    };
+
+    const updateQuestion = (index: number, field: keyof Question, value: any) => {
+        const newQuestions = [...questions];
+        const questionToUpdate = { ...newQuestions[index] };
+    
+        if (field === 'label' || field === 'type' || field === 'required') {
+            (questionToUpdate as any)[field] = value;
+        } else if (field === 'options') {
+            // This is handled by updateQuestionOptions
+            return;
+        }
+        
+        if (field === 'type' && ['select', 'checkbox', 'radio'].includes(value)) {
+            if (!questionToUpdate.options || questionToUpdate.options.length === 0) {
+                questionToUpdate.options = ['Opción 1'];
+            }
+        } else if (field === 'type' && !['select', 'checkbox', 'radio'].includes(value)) {
+            delete questionToUpdate.options;
+        }
+    
+        newQuestions[index] = questionToUpdate;
+        setQuestions(newQuestions);
+    };
+    
+    const updateQuestionOptions = (qIndex: number, value: string) => {
+        const newQuestions = [...questions];
+        newQuestions[qIndex] = { ...newQuestions[qIndex], options: value.split('\n') };
+        setQuestions(newQuestions);
+    };
+
+    const removeQuestion = (index: number) => {
+        setQuestions(questions.filter((_, i) => i !== index));
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        // Ensure IDs are consistent and unique before saving
+        const finalQuestions = questions.map((q, index) => ({
+            ...q,
+            id: q.id.startsWith('new-') || !isNaN(Number(q.id)) ? `${q.type}-${index}` : q.id, // Make IDs more robust for DB
+        }));
+        onSave({ title, description, structure: finalQuestions });
+    };
+
+    return (
+        <Modal isOpen={true} onClose={onClose} title={template ? 'Editar Formulario' : 'Crear Formulario'}>
+            <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto p-1">
+                <div>
+                    <label className="block text-sm font-medium">Título del Formulario</label>
+                    <input type="text" value={title} onChange={e => setTitle(e.target.value)} required className="mt-1 block w-full input-style" />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium">Descripción</label>
+                    <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} className="mt-1 block w-full input-style" />
+                </div>
+                <div className="pt-4 border-t">
+                    <h3 className="font-semibold mb-2">Preguntas</h3>
+                    {questions.map((q, i) => (
+                        <div key={q.id} className="p-3 border rounded-md mb-3 space-y-2 bg-bg-alt dark:bg-bg-alt/50">
+                            <div className="flex gap-2 items-end">
+                                <div className="flex-grow">
+                                    <label className="block text-xs font-medium">Etiqueta de la Pregunta</label>
+                                    <input type="text" value={q.label} onChange={e => updateQuestion(i, 'label', e.target.value)} required className="w-full input-style" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium">Tipo</label>
+                                    <select value={q.type} onChange={e => updateQuestion(i, 'type', e.target.value as QuestionType)} className="input-style">
+                                        <option value="text">Texto Corto</option>
+                                        <option value="textarea">Texto Largo</option>
+                                        <option value="select">Selección</option>
+                                        <option value="checkbox">Casillas</option>
+                                        <option value="radio">Opciones</option>
+                                    </select>
+                                </div>
+                                <button type="button" onClick={() => removeQuestion(i)} className="p-2 text-red-500 hover:bg-red-100 rounded-md"><TrashIcon className="w-5 h-5"/></button>
+                            </div>
+                            {(q.type === 'select' || q.type === 'checkbox' || q.type === 'radio') && (
+                                <div>
+                                    <label className="block text-xs font-medium">Opciones (una por línea)</label>
+                                    <textarea rows={3} value={q.options?.join('\n') || ''} onChange={e => updateQuestionOptions(i, e.target.value)} className="w-full input-style"/>
+                                </div>
+                            )}
+                            <div className="flex items-center">
+                                <input type="checkbox" checked={q.required} onChange={e => updateQuestion(i, 'required', e.target.checked)} id={`required-${q.id}`} className="h-4 w-4 rounded"/>
+                                <label htmlFor={`required-${q.id}`} className="ml-2 text-sm">Requerido</label>
+                            </div>
+                        </div>
+                    ))}
+                    <button type="button" onClick={addQuestion} className="text-sm text-primary dark:text-accent-turquoise font-semibold flex items-center gap-1">
+                        <PlusCircleIcon className="w-4 h-4" /> Añadir Pregunta
+                    </button>
+                </div>
+                <div className="flex justify-end gap-4 pt-4">
+                    <button type="button" onClick={onClose} className="btn-secondary">Cancelar</button>
+                    <button type="submit" className="btn-primary">Guardar Formulario</button>
+                </div>
+            </form>
+            <style>{`
+                .input-style {
+                    padding: 8px 12px;
+                    background-color: white;
+                    border: 1px solid #E9DFD3;
+                    border-radius: 6px;
+                    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+                }
+                .dark .input-style {
+                    background-color: #0A192F;
+                    border-color: #243A59;
+                    color: #E6F1FF;
+                }
+                .btn-primary { padding: 8px 16px; font-weight: 600; color: #083C70; background-color: #E9DFD3; border-radius: 6px; }
+                .btn-primary:hover { opacity: 0.9; }
+                .btn-secondary { padding: 8px 16px; font-weight: 600; background-color: #e5e7eb; border-radius: 6px; }
+                .dark .btn-secondary { background-color: #4b5563; color: #E6F1FF; }
+            `}</style>
+        </Modal>
+    );
+};
+
+const PatientsManager = ({ token }: { token: string }) => {
+    const [patients, setPatients] = useState<Patient[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+
+    useEffect(() => {
+        const fetchPatients = async () => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/users/patients`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!res.ok) throw new Error('Failed to fetch patients');
+                setPatients(await res.json());
+            } catch (error) {
+                console.error(error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchPatients();
+    }, [token]);
+    
+    return (
+        <PageWrapper title="Gestión de Pacientes">
+            {isLoading ? <p>Cargando pacientes...</p> : (
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left text-muted dark:text-main/80">
+                         <thead className="text-xs text-main uppercase bg-bg-alt dark:text-main dark:bg-bg-alt">
+                            <tr>
+                                <th scope="col" className="px-6 py-3">Nombre</th>
+                                <th scope="col" className="px-6 py-3">Email</th>
+                                <th scope="col" className="px-6 py-3">Seguro Médico</th>
+                                <th scope="col" className="px-6 py-3 text-right">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {patients.map(patient => (
+                                <tr key={patient.id} className="bg-bg-main border-b dark:bg-bg-main dark:border-border-dark hover:bg-bg-alt dark:hover:bg-bg-alt">
+                                    <td className="px-6 py-4 font-medium text-main whitespace-nowrap dark:text-main">{patient.name}</td>
+                                    <td className="px-6 py-4">{patient.email}</td>
+                                    <td className="px-6 py-4">{patient.insuranceName || 'No especificado'}</td>
+                                    <td className="px-6 py-4 text-right">
+                                        <button onClick={() => setSelectedPatient(patient)} className="text-primary dark:text-accent-turquoise hover:underline text-xs font-semibold flex items-center gap-1 ml-auto">
+                                            Ver Detalles <ChevronRightIcon className="w-4 h-4" />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+            {selectedPatient && <PatientDetailModal patient={selectedPatient} token={token} onClose={() => setSelectedPatient(null)} />}
+        </PageWrapper>
+    )
+};
+
+const PatientDetailModal = ({ patient, token, onClose }: { patient: Patient, token: string, onClose: () => void }) => {
+    const [details, setDetails] = useState<PatientDetails | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState<'info' | 'appointments' | 'forms'>('info');
+    const [openSubmissionId, setOpenSubmissionId] = useState<number | null>(null);
+
+    useEffect(() => {
+        const fetchDetails = async () => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/users/patients/${patient.id}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!res.ok) throw new Error('Failed to fetch patient details');
+                setDetails(await res.json());
+            } catch (error) {
+                console.error(error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchDetails();
+    }, [patient.id, token]);
+    
+    const formatDate = (dateString?: string) => {
+        if (!dateString) return "N/A";
+        return new Date(dateString).toLocaleDateString('es-ES', {
+            year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC'
+        });
+    };
+    
+    const PriorityBadge = ({ priority }: { priority: 'high' | 'medium' | 'low' }) => {
+        const styles = {
+            high: { bg: 'bg-red-100', text: 'text-red-800', dot: 'bg-red-500', label: 'Alta' },
+            medium: { bg: 'bg-yellow-100', text: 'text-yellow-800', dot: 'bg-yellow-500', label: 'Moderada' },
+            low: { bg: 'bg-green-100', text: 'text-green-800', dot: 'bg-green-500', label: 'Leve' },
+        };
+        const style = styles[priority];
+        return (
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${style.bg} ${style.text}`}>
+                <span className={`w-2 h-2 mr-1.5 rounded-full ${style.dot}`}></span>
+                Prioridad {style.label}
+            </span>
+        );
+    };
+
+    const WizardAnswersDisplay = ({ answers }: { answers: ClinicalWizardAnswers }) => {
+      return (
+        <div className="space-y-4 text-sm">
+            {answers.generalData && (
+                <div>
+                    <h4 className="font-semibold text-main dark:text-main mb-1">Datos Generales</h4>
+                    <div className="pl-3 border-l-2 border-accent-warm space-y-1">
+                        <p><strong>Nombre:</strong> {answers.generalData.fullName}</p>
+                        <p><strong>Edad:</strong> {answers.generalData.age}</p>
+                        <p><strong>Sexo:</strong> {answers.generalData.gender}</p>
+                        <p><strong>Ocupación:</strong> {answers.generalData.occupation}</p>
+                        <p><strong>Contacto:</strong> {answers.generalData.contact}</p>
+                    </div>
+                </div>
+            )}
+            {answers.consultationReason && (
+                 <div>
+                    <h4 className="font-semibold text-main dark:text-main mb-1">Motivo de Consulta</h4>
+                    <div className="pl-3 border-l-2 border-accent-warm space-y-1">
+                        <p><strong>Razón:</strong> {answers.consultationReason.reason}</p>
+                        <p><strong>Duración:</strong> {answers.consultationReason.duration}</p>
+                    </div>
+                </div>
+            )}
+            {answers.bodyMap && answers.bodyMap.length > 0 && (
+                <div>
+                    <h4 className="font-semibold text-main dark:text-main mb-1">Mapa de Dolor</h4>
+                     <div className="pl-3 border-l-2 border-accent-warm space-y-2">
+                        {answers.bodyMap.map((point, i) => (
+                            <div key={i}>
+                                <p><strong>Zona:</strong> <span className="capitalize">{point.bodyPart.replace(/-/g, ' ')}</span> ({point.view === 'front' ? 'Frontal' : 'Trasera'})</p>
+                                <p><strong>Tipo:</strong> {point.painType} | <strong>Intensidad:</strong> {point.intensity}/10 | <strong>Duración:</strong> {point.duration}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+             {answers.mtc && (
+                 <div>
+                    <h4 className="font-semibold text-main dark:text-main mb-1">Principios MTC (Bā Gāng)</h4>
+                    <div className="pl-3 border-l-2 border-accent-warm grid grid-cols-2 gap-x-4">
+                        <p><strong>Sensación:</strong> {answers.mtc.coldHeat}</p>
+                        <p><strong>Predominio:</strong> {answers.mtc.dayNight}</p>
+                        <p><strong>Naturaleza:</strong> {answers.mtc.fullEmpty}</p>
+                        <p><strong>Inicio:</strong> {answers.mtc.onset}</p>
+                    </div>
+                </div>
+            )}
+             {answers.tongue && answers.tongue.length > 0 &&(
+                 <div>
+                    <h4 className="font-semibold text-main dark:text-main mb-1">Evaluación de Lengua</h4>
+                    <div className="pl-3 border-l-2 border-accent-warm">
+                       <p>{answers.tongue.join(', ')}</p>
+                    </div>
+                </div>
+            )}
+        </div>
+      );
+    };
+
+    const renderSubmissionDetails = (sub: PatientSubmissionDetail) => {
+        // Check if answers follow the clinical wizard structure
+        const isWizard = 'generalData' in sub.answers || 'bodyMap' in sub.answers || 'consultationReason' in sub.answers;
+        if (isWizard) {
+            return <WizardAnswersDisplay answers={sub.answers as ClinicalWizardAnswers} />
+        } else {
+            // Fallback for generic forms
+            return (
+                 <div className="p-4 border-t border-border-main dark:border-border-dark space-y-3 bg-bg-main dark:bg-bg-main">
+                    {Object.entries(sub.answers).map(([qId, answer]) => (
+                        <div key={qId} className="text-sm">
+                            <p className="font-semibold text-main dark:text-main">{sub.structure.find(q => q.id === qId)?.label || qId}</p>
+                            <p className="text-muted dark:text-main/80 pl-2 border-l-2 border-accent-warm ml-1 mt-1">{Array.isArray(answer) ? answer.join(', ') : answer.toString()}</p>
+                        </div>
+                    ))}
+                </div>
+            )
+        }
+    }
+
+    return (
+        <Modal isOpen={true} onClose={onClose} title={`Detalles de ${patient.name}`}>
+            <div className="max-h-[70vh] overflow-y-auto p-1">
+                <div className="border-b border-border-main dark:border-border-dark mb-4">
+                    <nav className="flex gap-4">
+                        <button onClick={() => setActiveTab('info')} className={`py-2 px-1 border-b-2 ${activeTab === 'info' ? 'border-primary text-primary' : 'border-transparent text-muted hover:border-gray-300'}`}>Información</button>
+                        <button onClick={() => setActiveTab('appointments')} className={`py-2 px-1 border-b-2 ${activeTab === 'appointments' ? 'border-primary text-primary' : 'border-transparent text-muted hover:border-gray-300'}`}>Citas</button>
+                        <button onClick={() => setActiveTab('forms')} className={`py-2 px-1 border-b-2 ${activeTab === 'forms' ? 'border-primary text-primary' : 'border-transparent text-muted hover:border-gray-300'}`}>Formularios</button>
+                    </nav>
+                </div>
+                {isLoading ? <p>Cargando detalles...</p> : !details ? <p>No se pudieron cargar los detalles.</p> : (
+                    <div>
+                        {activeTab === 'info' && (
+                            <div className="space-y-3 text-sm">
+                                <p><strong className="font-semibold text-main dark:text-main w-24 inline-block">Nombre:</strong> {details.patient.name}</p>
+                                <p><strong className="font-semibold text-main dark:text-main w-24 inline-block">Email:</strong> <a href={`mailto:${details.patient.email}`} className="text-primary dark:text-accent-turquoise hover:underline">{details.patient.email}</a></p>
+                                <p><strong className="font-semibold text-main dark:text-main w-24 inline-block">Seguro:</strong> {details.patient.insuranceName || 'No especificado'}</p>
+                            </div>
+                        )}
+                        {activeTab === 'appointments' && (
+                             <div className="space-y-3">
+                                {details.appointments.length > 0 ? (
+                                    details.appointments.map(app => (
+                                        <div key={app.id} className="p-3 border border-border-main dark:border-border-dark rounded-md text-sm bg-bg-alt dark:bg-bg-alt/50">
+                                            <p className="font-semibold text-main dark:text-main">{app.service.name}</p>
+                                            <p className="text-muted dark:text-main/80">
+                                                {formatDate(app.date)} a las {app.time}
+                                            </p>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p className="text-muted text-sm">Este paciente no tiene citas programadas.</p>
+                                )}
+                            </div>
+                        )}
+                        {activeTab === 'forms' && (
+                            <div className="space-y-3">
+                                {details.submissions.length > 0 ? details.submissions.map(sub => (
+                                    <div key={sub.id} className="border border-border-main dark:border-border-dark rounded-md">
+                                        <button onClick={() => setOpenSubmissionId(openSubmissionId === sub.id ? null : sub.id)} className="w-full flex justify-between items-center p-3 text-left bg-bg-alt dark:bg-bg-alt/50 hover:bg-opacity-75">
+                                            <div>
+                                                <p className="font-semibold text-main dark:text-main">{sub.title}</p>
+                                                <p className="text-xs text-muted dark:text-muted">Enviado: {new Date(sub.submissionDate).toLocaleString('es-ES')}</p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                {sub.priority && <PriorityBadge priority={sub.priority} />}
+                                                <ChevronRightIcon className={`w-5 h-5 transition-transform ${openSubmissionId === sub.id ? 'rotate-90' : ''}`} />
+                                            </div>
+                                        </button>
+                                        {openSubmissionId === sub.id && (
+                                            <div className="p-4 border-t border-border-main dark:border-border-dark bg-bg-main dark:bg-bg-main">
+                                               {renderSubmissionDetails(sub)}
+                                            </div>
+                                        )}
+                                    </div>
+                                )) : <p className="text-muted text-sm">Este paciente no ha enviado ningún formulario.</p>}
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+        </Modal>
     );
 };
 

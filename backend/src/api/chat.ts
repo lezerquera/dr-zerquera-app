@@ -1,4 +1,4 @@
-import express, { Request as ExpressRequest, Response as ExpressResponse } from 'express';
+import express, { Request, Response } from 'express';
 import pool from '../db';
 import { verifyToken, isAdmin } from '../middleware/auth';
 import type { ChatMessage, User } from '../shared/types';
@@ -7,7 +7,7 @@ const router = express.Router();
 
 // GET /api/chat/conversations (Admin only)
 // Fetches a list of all conversations, with the last message and unread count for each.
-router.get('/conversations', verifyToken, isAdmin, async (req: ExpressRequest, res: ExpressResponse) => {
+router.get('/conversations', verifyToken, isAdmin, async (req: Request, res: Response) => {
     const adminId = req.user!.id;
     try {
         const query = `
@@ -38,7 +38,7 @@ router.get('/conversations', verifyToken, isAdmin, async (req: ExpressRequest, r
 
 
 // GET /api/chat/my-conversation (Patient only)
-router.get('/my-conversation', verifyToken, async (req: ExpressRequest, res: ExpressResponse) => {
+router.get('/my-conversation', verifyToken, async (req: Request, res: Response) => {
     const patientId = req.user?.id;
     if (!patientId) {
         return res.status(403).json({ error: 'User ID not found' });
@@ -78,7 +78,7 @@ router.get('/my-conversation', verifyToken, async (req: ExpressRequest, res: Exp
 
 
 // GET /api/chat/conversation/:patientId (Admin only)
-router.get('/conversation/:patientId', verifyToken, isAdmin, async (req: ExpressRequest, res: ExpressResponse) => {
+router.get('/conversation/:patientId', verifyToken, isAdmin, async (req: Request, res: Response) => {
     const adminId = req.user!.id;
     const patientId = parseInt(req.params.patientId, 10);
 
@@ -124,7 +124,7 @@ router.get('/conversation/:patientId', verifyToken, isAdmin, async (req: Express
 
 
 // POST /api/chat/messages
-router.post('/messages', verifyToken, async (req: ExpressRequest, res: ExpressResponse) => {
+router.post('/messages', verifyToken, async (req: Request, res: Response) => {
     const senderId = req.user!.id;
     const senderRole = req.user!.role;
     const senderName = req.user!.name;
@@ -159,7 +159,7 @@ router.post('/messages', verifyToken, async (req: ExpressRequest, res: ExpressRe
 });
 
 // GET /api/chat/unread-count (Admin only)
-router.get('/unread-count', verifyToken, isAdmin, async (req: ExpressRequest, res: ExpressResponse) => {
+router.get('/unread-count', verifyToken, isAdmin, async (req: Request, res: Response) => {
     const adminId = req.user!.id;
     try {
         const result = await pool.query(

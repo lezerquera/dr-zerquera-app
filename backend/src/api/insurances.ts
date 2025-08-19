@@ -1,11 +1,11 @@
-import express, { Request as ExpressRequest, Response as ExpressResponse } from 'express';
+import express, { Request, Response } from 'express';
 import pool from '../db';
 import { verifyToken, isAdmin } from '../middleware/auth';
 
 const router = express.Router();
 
 // GET /api/insurances/all (Public)
-router.get('/all', async (req: ExpressRequest, res: ExpressResponse) => {
+router.get('/all', async (req: Request, res: Response) => {
     try {
         const result = await pool.query('SELECT id, name, brand_color as "brandColor" FROM insurances ORDER BY name');
         res.json(result.rows);
@@ -16,7 +16,7 @@ router.get('/all', async (req: ExpressRequest, res: ExpressResponse) => {
 });
 
 // GET /api/insurances/accepted (Public)
-router.get('/accepted', async (req: ExpressRequest, res: ExpressResponse) => {
+router.get('/accepted', async (req: Request, res: Response) => {
     try {
         const result = await pool.query('SELECT insurance_id FROM accepted_insurances');
         res.json(result.rows.map(r => r.insurance_id));
@@ -27,7 +27,7 @@ router.get('/accepted', async (req: ExpressRequest, res: ExpressResponse) => {
 });
 
 // POST /api/insurances/accepted (Admin only)
-router.post('/accepted', verifyToken, isAdmin, async (req: ExpressRequest, res: ExpressResponse) => {
+router.post('/accepted', verifyToken, isAdmin, async (req: Request, res: Response) => {
     const { accepted } = req.body;
     if (!Array.isArray(accepted)) {
         return res.status(400).json({ error: 'Invalid payload, "accepted" must be an array of strings.' });
@@ -53,7 +53,7 @@ router.post('/accepted', verifyToken, isAdmin, async (req: ExpressRequest, res: 
 });
 
 // GET /api/insurances/accepted-details (Public)
-router.get('/accepted-details', async (req: ExpressRequest, res: ExpressResponse) => {
+router.get('/accepted-details', async (req: Request, res: Response) => {
      try {
         const result = await pool.query(
             `SELECT i.id, i.name, i.brand_color as "brandColor"
