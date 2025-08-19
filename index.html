@@ -1,24 +1,47 @@
-<script type="importmap">
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dr. Zerquera - Gestión Médica</title>
+    <meta name="description" content="Gestione sus citas y comuníquese con el Dr. Zerquera de forma fácil y segura." />
+    <meta name="theme-color" content="#083C70" />
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="apple-touch-icon" href="/assets/zimi-logo.png" sizes="180x180">
+    <script>
+      // Aplica el tema inmediatamente para evitar FOUC (Flash of unstyled content)
+      if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    </script>
+  <script type="importmap">
 {
   "imports": {
-    "jsonwebtoken": "https://esm.sh/jsonwebtoken@^9.0.2",
-    "vite": "https://esm.sh/vite@^7.1.2",
+    "vite-plugin-pwa": "https://esm.sh/vite-plugin-pwa@^1.0.2",
+    "@google/genai": "https://esm.sh/@google/genai@^1.14.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.1/",
     "react/": "https://esm.sh/react@^19.1.1/",
     "react": "https://esm.sh/react@^19.1.1",
-    "@google/genai": "https://esm.sh/@google/genai@^1.14.0",
-    "react-router-dom": "https://esm.sh/react-router-dom@^7.8.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.1.1/",
     "dotenv": "https://esm.sh/dotenv@^17.2.1",
-    "pg": "https://esm.sh/pg@^8.16.3",
-    "bcryptjs": "https://esm.sh/bcryptjs@^3.0.2",
+    "path": "https://esm.sh/path@^0.12.7",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.0.0",
+    "react-router-dom": "https://esm.sh/react-router-dom@^7.8.1",
     "cors": "https://esm.sh/cors@^2.8.5",
     "express": "https://esm.sh/express@^5.1.0",
+    "vite": "https://esm.sh/vite@^7.1.2",
+    "pg": "https://esm.sh/pg@^8.16.3",
     "jwt-decode": "https://esm.sh/jwt-decode@^4.0.0",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.0.0",
-    "process": "https://esm.sh/process@^0.11.10",
-    "path": "https://esm.sh/path@^0.12.7"
+    "jsonwebtoken": "https://esm.sh/jsonwebtoken@^9.0.2",
+    "bcryptjs": "https://esm.sh/bcryptjs@^3.0.2"
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
-<script type="module" src="/index.tsx"></script>
+</head>
+  <body class="bg-bg-main dark:bg-bg-dark text-text-main dark:text-light">
+    <div id="root"></div>
+    <script type="module" src="/src/index.tsx"></script>
+  </body>
+</html>

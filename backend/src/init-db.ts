@@ -1,28 +1,11 @@
-/// <reference types="node" />
-
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
 import * as bcrypt from 'bcryptjs';
+import path from 'path';
 
-dotenv.config();
+// --- DATOS INICIALES (SEEDING) ---
+// Se mantiene la misma data que el original...
 
-const dbUrl = process.env.DATABASE_URL;
-
-if (!dbUrl) {
-  console.error('\n❌ ERROR: La variable de entorno DATABASE_URL no está configurada.');
-  console.error("Por favor, cree un archivo '.env' en el directorio 'backend'.");
-  console.error('Dentro de ese archivo, añada la línea con su URL de conexión a PostgreSQL, así:');
-  console.error('DATABASE_URL="postgresql://user:password@host:port/database"\n');
-  throw new Error("❌ DATABASE_URL no está configurada.");
-}
-
-const pool = new Pool({
-  connectionString: dbUrl,
-  ssl: dbUrl.includes('localhost') ? false : { rejectUnauthorized: false },
-});
-
-// Array con la definición de todos los servicios.
-// Esto hace que el código sea más limpio y fácil de mantener que una única y enorme cadena SQL.
 const servicesToSeed = [
     {
         name: 'Acupuntura',
@@ -161,20 +144,44 @@ const servicesToSeed = [
     }
 ];
 
+// --- LÓGICA DE INICIALIZACIÓN ---
+
+/**
+ * Función autocontenida y exportable que se conecta a la base de datos,
+ * borra las tablas existentes y las vuelve a crear con datos iniciales.
+ * Maneja su propia conexión y la cierra al finalizar.
+ */
 export const initializeDatabase = async () => {
+  // Carga las variables de entorno desde el archivo .env en el directorio 'backend'
+  dotenv.config({ path: path.resolve(__dirname, '../.env') });
+  const dbUrl = process.env.DATABASE_URL;
+
+  if (!dbUrl) {
+    console.error('\n❌ ERROR: La variable de entorno DATABASE_URL no está configurada.');
+    console.error("Por favor, cree un archivo '.env' en el directorio 'backend'.");
+    console.error('Dentro de ese archivo, añada la línea con su URL de conexión a PostgreSQL, así:');
+    console.error('DATABASE_URL="postgresql://user:password@host:port/database"\n');
+    throw new Error("DATABASE_URL no está configurada.");
+  }
+
+  const pool = new Pool({
+    connectionString: dbUrl,
+    ssl: dbUrl.includes('localhost') ? false : { rejectUnauthorized: false },
+  });
+
   const client = await pool.connect();
-  console.log('Connected to the database for initialization.');
+  console.log('✅ Conectado a la base de datos para la inicialización.');
 
   try {
     await client.query('BEGIN');
-    console.log('Starting database initialization...');
+    console.log('▶️  Iniciando la inicialización de la base de datos...');
 
-    // --- PASO 1: Resetear todo EXCEPTO la tabla de servicios ---
-    console.log('Dropping existing tables (services table will be preserved)...');
-    await client.query('DROP TABLE IF EXISTS users, accepted_insurances, insurances, chat_messages, appointments, education, doctor_profile, clinic_info CASCADE;');
+    console.log('    - Borrando tablas existentes...');
+    // Se ha cambiado para eliminar todas las tablas, incluyendo servicios, para una reinicialización limpia.
+    await client.query('DROP TABLE IF EXISTS users, accepted_insurances, insurances, chat_messages, appointments, services, education, doctor_profile, clinic_info CASCADE;');
 
-    // --- PASO 2: Recrear las tablas que fueron borradas ---
-    console.log('Recreating tables...');
+    console.log('    - Recreando tablas...');
+    // Las sentencias CREATE TABLE permanecen iguales
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -214,9 +221,6 @@ export const initializeDatabase = async () => {
         location VARCHAR(255)
       );
     `);
-    
-    // --- PASO 3: Manejar la tabla de servicios de forma segura ---
-    console.log('Ensuring services table exists and is structured correctly...');
     await client.query(`
       CREATE TABLE IF NOT EXISTS services (
         id SERIAL PRIMARY KEY,
@@ -228,8 +232,6 @@ export const initializeDatabase = async () => {
         detailed_info JSONB
       );
     `);
-
-    // El resto de tablas que dependen de 'services'
     await client.query(`
       CREATE TABLE IF NOT EXISTS appointments (
         id SERIAL PRIMARY KEY,
@@ -267,28 +269,24 @@ export const initializeDatabase = async () => {
         insurance_id VARCHAR(255) PRIMARY KEY REFERENCES insurances(id)
       );
     `);
-    console.log('Tables created successfully.');
+    console.log('    - Tablas creadas con éxito.');
     
-    // --- PASO 4: Poblar los datos (seeding) ---
-    console.log('Inserting initial data...');
+    console.log('    - Insertando datos iniciales...');
 
-    // Seed Admin User (siempre se resetea)
+    // Seed Admin User
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
     const adminPasswordHash = await bcrypt.hash(adminPassword, 10);
     await client.query(`
-        INSERT INTO users (email, password_hash, role, name) VALUES ('admin@zimi.health', $1, 'admin', 'Admin User')
-        ON CONFLICT (email) DO NOTHING;
+        INSERT INTO users (email, password_hash, role, name) VALUES ('admin@zimi.health', $1, 'admin', 'Admin User') ON CONFLICT (email) DO NOTHING;
     `, [adminPasswordHash]);
-    console.log('Admin user seeded.');
+    console.log('      -> Usuario administrador sembrado.');
 
-    // Seed Clinic Info (siempre se resetea)
+    // Seed Clinic & Doctor Info
     await client.query(`
         INSERT INTO clinic_info (id, name, address, phone, email, website) VALUES
         (1, 'Zerquera Integrative Medical Institute', '7700 N Kendall Dr. Unit 807, Kendall, FL 33156', '(305) 274-4351', 'drzerquera@aol.com', 'www.drzerquera.com')
         ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, address = EXCLUDED.address, phone = EXCLUDED.phone, email = EXCLUDED.email, website = EXCLUDED.website;
     `);
-
-    // Seed Doctor Profile (siempre se resetea)
     await client.query(`
       INSERT INTO doctor_profile (id, name, titles, photo_url, introduction, specialties, experience) VALUES
       (1, 'Dr. Pablo J. Zerquera', 'OMD, AP, PhD', '/assets/dr-zerquera.webp',
@@ -297,52 +295,27 @@ export const initializeDatabase = async () => {
       'Comprometido con una visión integradora de la salud, el Dr. Zerquera completó un doctorado en Medicina Homeopática en la Universidad Internacional de Cambridge, fortaleciendo su enfoque clínico con herramientas terapéuticas que respetan la individualidad biológica y emocional de cada paciente. Con más de una década de experiencia clínica, ha desarrollado una práctica centrada en el tratamiento del dolor crónico, trastornos emocionales, lesiones agudas y desequilibrios funcionales. Su abordaje combina técnicas como acupuntura, moxibustión, terapia de ozono en acupuntos, medicina ortomolecular y estrategias de regulación neurovegetativa, siempre con base en evidencia y sensibilidad clínica. El Dr. Zerquera atiende en inglés y español, y se distingue por su capacidad para integrar conocimientos médicos tradicionales con terapias avanzadas, ofreciendo una experiencia terapéutica precisa, humana y profundamente restauradora.'
       ) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, titles = EXCLUDED.titles, photo_url = EXCLUDED.photo_url, introduction = EXCLUDED.introduction, specialties = EXCLUDED.specialties, experience = EXCLUDED.experience;
     `);
-    await client.query(`DELETE FROM education WHERE doctor_id = 1;`); // Limpiar educación vieja antes de insertar
+    await client.query(`DELETE FROM education WHERE doctor_id = 1;`);
     await client.query(`
         INSERT INTO education (doctor_id, degree, institution, location) VALUES
         (1, 'Médico', 'Universidad de La Habana', 'Cuba'),
         (1, 'Especialización en Acupuntura y Medicina Tradicional China', 'Acupuncture and Massage College', 'Miami, FL'),
         (1, 'Doctorado en Medicina Homeopática (PhD)', 'Universidad Internacional de Cambridge', '');
     `);
+    console.log('      -> Perfil del doctor y de la clínica sembrados.');
 
-    // --- PASO 5: Poblar la tabla de servicios de forma inteligente ---
-    console.log('Seeding services: Adding new services while preserving existing ones...');
-    
-    // Primero, obtenemos los nombres de todos los servicios existentes para evitar duplicados.
-    const existingServicesResult = await client.query('SELECT name FROM services');
-    const existingServiceNames = new Set(existingServicesResult.rows.map(row => row.name));
-
-    // Filtramos la lista de servicios a insertar, quedándonos solo con los que no existen.
-    const newServicesToSeed = servicesToSeed.filter(service => !existingServiceNames.has(service.name));
-    
-    if (newServicesToSeed.length > 0) {
-        console.log(`Found ${newServicesToSeed.length} new services to insert.`);
-        // Insertamos los servicios nuevos uno por uno usando consultas parametrizadas para seguridad.
-        for (const service of newServicesToSeed) {
-            await client.query(
-                `INSERT INTO services (name, description, image_url, duration, price, detailed_info)
-                 VALUES ($1, $2, $3, $4, $5, $6);`,
-                [service.name, service.description, service.imageUrl, service.duration, service.price, JSON.stringify(service.detailedInfo)]
-            );
-        }
-    } else {
-        console.log('No new services to insert. All services are up-to-date.');
+    // Seed Services
+    for (const service of servicesToSeed) {
+        await client.query(
+            `INSERT INTO services (name, description, image_url, duration, price, detailed_info) VALUES ($1, $2, $3, $4, $5, $6);`,
+            [service.name, service.description, service.imageUrl, service.duration, service.price, JSON.stringify(service.detailedInfo)]
+        );
     }
-    console.log('Services seeded successfully.');
+    console.log(`      -> ${servicesToSeed.length} servicios sembrados.`);
 
-
-    // Seed Insurances (siempre se resetea)
+    // Seed Insurances
     const insurances = [
-        { id: 'aetna', name: 'Aetna', brandColor: '#00A3E0' },
-        { id: 'ambetter', name: 'Ambetter', brandColor: '#F15A29' },
-        { id: 'avmed', name: 'AvMed', brandColor: '#00558C' },
-        { id: 'bcbs', name: 'Blue Cross Blue Shield', brandColor: '#005EB8' },
-        { id: 'cigna', name: 'Cigna', brandColor: '#007DBA' },
-        { id: 'doctors-healthcare', name: 'Doctors Healthcare Plans', brandColor: '#1E90FF' },
-        { id: 'simply', name: 'Simply Healthcare', brandColor: '#00AEEF' },
-        { id: 'sunshine', name: 'Sunshine Health', brandColor: '#FFC72C' },
-        { id: 'careplus', name: 'Care Plus', brandColor: '#FDB813' },
-        { id: 'healthsun', name: 'Health Sun', brandColor: '#00A79D' },
+        { id: 'aetna', name: 'Aetna', brandColor: '#00A3E0' }, { id: 'ambetter', name: 'Ambetter', brandColor: '#F15A29' }, { id: 'avmed', name: 'AvMed', brandColor: '#00558C' }, { id: 'bcbs', name: 'Blue Cross Blue Shield', brandColor: '#005EB8' }, { id: 'cigna', name: 'Cigna', brandColor: '#007DBA' }, { id: 'doctors-healthcare', name: 'Doctors Healthcare Plans', brandColor: '#1E90FF' }, { id: 'simply', name: 'Simply Healthcare', brandColor: '#00AEEF' }, { id: 'sunshine', name: 'Sunshine Health', brandColor: '#FFC72C' }, { id: 'careplus', name: 'Care Plus', brandColor: '#FDB813' }, { id: 'healthsun', name: 'Health Sun', brandColor: '#00A79D' },
     ];
     for (const ins of insurances) {
         await client.query(
@@ -350,41 +323,45 @@ export const initializeDatabase = async () => {
             [ins.id, ins.name, ins.brandColor]
         );
     }
-    console.log('Insurances seeded.');
-
-    // Seed some accepted insurances (siempre se resetea)
     const acceptedInsurances = ['bcbs', 'aetna', 'cigna', 'careplus', 'healthsun'];
-    await client.query('DELETE FROM accepted_insurances;'); // Limpiar antes de insertar
+    await client.query('DELETE FROM accepted_insurances;');
     for (const insId of acceptedInsurances) {
-        await client.query(
-            `INSERT INTO accepted_insurances (insurance_id) VALUES ($1) ON CONFLICT (insurance_id) DO NOTHING`,
-            [insId]
-        );
+        await client.query(`INSERT INTO accepted_insurances (insurance_id) VALUES ($1) ON CONFLICT (insurance_id) DO NOTHING`, [insId]);
     }
-    console.log('Accepted insurances seeded.');
-
+    console.log('      -> Seguros sembrados.');
 
     await client.query('COMMIT');
-    console.log('✅ Database initialization complete and data seeded.');
+    console.log('✅ ¡Éxito! La base de datos ha sido inicializada y los datos han sido sembrados.');
 
   } catch (err) {
     await client.query('ROLLBACK');
-    console.error('❌ Error during database initialization:', err);
-    throw err;
+    console.error('❌ Error durante la inicialización de la base de datos:', err);
+    throw err; // Lanza el error para que el proceso principal lo capture
   } finally {
     client.release();
-    console.log('Client released.');
+    console.log('Cliente de base de datos liberado.');
+    await pool.end();
+    console.log('Pool de conexiones cerrado.');
   }
 };
 
+// --- PUNTO DE ENTRADA DEL SCRIPT ---
+
+const main = async () => {
+  console.log('--- Iniciando script de inicialización de la base de datos ---');
+  try {
+    await initializeDatabase();
+    console.log('--- ✅ Script de inicialización finalizado con éxito ---');
+  } catch (error) {
+    console.error('--- ❌ El script de inicialización falló. Vea el error de arriba. ---');
+    // El proceso se cerrará automáticamente debido al error no controlado,
+    // pero se puede forzar si es necesario, aunque no es ideal.
+    process.exit(1);
+  }
+};
+
+// Se ejecuta solo si el archivo es llamado directamente desde la línea de comandos.
+// Esto evita que el script se ejecute cuando es importado por otros archivos (como el servidor API).
 if (require.main === module) {
-  initializeDatabase()
-    .then(() => {
-      console.log('Script finished successfully.');
-      pool.end();
-    })
-    .catch(() => {
-      console.error('Script failed.');
-      pool.end();
-    });
+  main();
 }

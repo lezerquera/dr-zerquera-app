@@ -1,6 +1,6 @@
-import express, { type Request, type Response } from 'express';
+import express, { Request as ExpressRequest, Response as ExpressResponse } from 'express';
 import cors from 'cors';
-import type { CorsOptions } from 'cors';
+import { CorsOptions } from 'cors';
 import dotenv from 'dotenv';
 import path from 'path'; // Importamos el módulo 'path' de Node.js
 import pool from './db';
@@ -65,11 +65,11 @@ app.use('/api/chat', chatMessagesRouter);
 app.use('/api/insurances', insurancesRouter);
 app.use('/api/setup', setupRouter); // Ruta de inicialización refactorizada
 
-app.get('/api', (req: Request, res: Response) => {
+app.get('/api', (req: ExpressRequest, res: ExpressResponse) => {
     res.send('ZIMI Backend API is running!');
 });
 
-app.get('/api/health', async (req: Request, res: Response) => {
+app.get('/api/health', async (req: ExpressRequest, res: ExpressResponse) => {
     try {
         await pool.query('SELECT 1');
         res.status(200).send('Backend and database connection are healthy.');
@@ -80,28 +80,27 @@ app.get('/api/health', async (req: Request, res: Response) => {
 });
 
 
-// --- Servir archivos estáticos del frontend ---
-// Esta sección debe ir DESPUÉS de todas las rutas de la API.
-// __dirname es backend/dist, así que subimos 2 niveles para llegar a la raíz del proyecto.
-const frontendDistPath = path.join(__dirname, '..', '..', 'frontend', 'dist');
-console.log(`Attempting to serve static files from: ${frontendDistPath}`);
+// --- Servir archivos estáticos del frontend (SOLO EN PRODUCCIÓN) ---
+// En desarrollo, Vite se encarga de servir el frontend.
+if (process.env.NODE_ENV === 'production') {
+    const frontendDistPath = path.join(__dirname, '..', '..', 'frontend', 'dist');
+    console.log(`[PROD] Attempting to serve static files from: ${frontendDistPath}`);
 
-// Servimos los assets (JS, CSS, imágenes, etc.) desde la carpeta 'dist' del frontend.
-app.use(express.static(frontendDistPath));
+    // Servimos los assets (JS, CSS, imágenes, etc.) desde la carpeta 'dist' del frontend.
+    app.use(express.static(frontendDistPath));
 
-
-// --- Catch-all para servir el index.html del frontend ---
-// Esto es crucial para que el enrutamiento del lado del cliente (React Router) funcione.
-// Cualquier solicitud GET que no coincida con una ruta de API anterior, servirá la app de React.
-app.get('*', (req: Request, res: Response) => {
-    const indexPath = path.join(frontendDistPath, 'index.html');
-    res.sendFile(indexPath, (err) => {
-        if (err) {
-            console.error("Could not send index.html:", err);
-            res.status(504).send("Frontend application not found. Check build configuration.");
-        }
+    // --- Catch-all para servir el index.html del frontend ---
+    // Esto es crucial para que el enrutamiento del lado del cliente (React Router) funcione.
+    app.get('*', (req: ExpressRequest, res: ExpressResponse) => {
+        const indexPath = path.join(frontendDistPath, 'index.html');
+        res.sendFile(indexPath, (err) => {
+            if (err) {
+                console.error("Could not send index.html:", err);
+                res.status(504).send("Frontend application not found. Check build configuration.");
+            }
+        });
     });
-});
+}
 
 
 // The app.listen call is removed from this file.

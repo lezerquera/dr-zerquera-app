@@ -1,4 +1,4 @@
-import express, { type Request, type Response } from 'express';
+import express, { Request as ExpressRequest, Response as ExpressResponse } from 'express';
 import * as bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
 import pool from '../db';
@@ -8,7 +8,7 @@ const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-default-secret-key-that-is-long-and-secure';
 
 // POST /api/auth/register
-router.post('/register', async (req: Request, res: Response) => {
+router.post('/register', async (req: ExpressRequest, res: ExpressResponse) => {
     const { email, password, name } = req.body;
 
     if (!email || !password || !name) {
@@ -41,7 +41,7 @@ router.post('/register', async (req: Request, res: Response) => {
 });
 
 // POST /api/auth/login
-router.post('/login', async (req: Request, res: Response) => {
+router.post('/login', async (req: ExpressRequest, res: ExpressResponse) => {
     const { email, password } = req.body;
 
     if (!email || !password) {

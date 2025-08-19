@@ -7,6 +7,7 @@ import { Logo, BuildingIcon, UsersIcon, LogOutIcon } from './components/Icons';
 import { NotificationCenter } from './components/NotificationCenter';
 import { useSound } from './hooks/useSound';
 import { ThemeToggle } from './components/ThemeToggle';
+import { InstallPWAButton } from './components/InstallPWAButton';
 
 // Use environment variable for the API base URL in production, fallback to proxy for development
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
@@ -16,6 +17,34 @@ interface MainAppProps {
     token: string;
     onLogout: () => void;
 }
+
+const Header = ({ user, onLogout, clinicInfo, notifications, setNotifications }: { user: User, onLogout: () => void, clinicInfo: ClinicInfo, notifications: Notification[], setNotifications: React.Dispatch<React.SetStateAction<Notification[]>> }) => {
+    const isAdmin = user.role === 'admin';
+    return (
+        <header className="bg-primary text-white shadow-md sticky top-0 z-40">
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex items-center justify-between h-16">
+                    <div className="flex items-center gap-4">
+                        <Link to="/" className="flex items-center gap-2">
+                            <Logo className="h-10 w-auto" />
+                            <span className="hidden sm:inline-block font-bold text-xl">{clinicInfo.name}</span>
+                        </Link>
+                    </div>
+                    <div className="flex items-center gap-2 sm:gap-4">
+                        <ThemeToggle />
+                        <NotificationCenter notifications={notifications} setNotifications={setNotifications} userId={isAdmin ? 'admin' : user.id.toString()} />
+                        <div className="flex items-center gap-2">
+                            <span className="hidden sm:inline text-white/80 text-sm font-medium">{user.name}</span>
+                            <button onClick={onLogout} className="p-2 rounded-full text-white/80 hover:text-white hover:bg-white/20 transition-colors" aria-label="Cerrar sesión">
+                                <LogOutIcon className="h-5 w-5" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+    );
+};
 
 const MainApp: React.FC<MainAppProps> = ({ user, token, onLogout }) => {
     const [doctorProfile, setDoctorProfile] = useState<DoctorProfile | null>(null);
@@ -31,8 +60,67 @@ const MainApp: React.FC<MainAppProps> = ({ user, token, onLogout }) => {
     const [unreadChatCount, setUnreadChatCount] = useState<number>(0);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [installPromptEvent, setInstallPromptEvent] = useState<any>(null);
+
 
     const authHeader = useMemo(() => ({ 'Authorization': `Bearer ${token}` }), [token]);
+
+    // This single effect now handles all PWA lifecycle events and diagnostics
+    useEffect(() => {
+        // Diagnostic: Check if Service Worker is active
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then((registration) => {
+                console.log('✅ [PWA] Service Worker está registrado y activo:', registration);
+            }).catch(error => {
+                console.error('❌ [PWA] Fallo en la registración del Service Worker:', error);
+            });
+        } else {
+            console.warn('ℹ️ [PWA] Service Worker no es soportado en este navegador.');
+        }
+
+        // Listener for the install prompt
+        const handleBeforeInstallPrompt = (e: Event) => {
+            e.preventDefault();
+            console.log('✅ [PWA] "beforeinstallprompt" event detectado. El banner de instalación debería mostrarse.');
+            setInstallPromptEvent(e);
+        };
+        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+        // Listener for when the app is successfully installed
+        const handleAppInstalled = () => {
+            console.log('✅ [PWA] La aplicación ha sido instalada.');
+            setInstallPromptEvent(null); // Hide the button after installation
+        };
+        window.addEventListener('appinstalled', handleAppInstalled);
+
+        // Cleanup listeners on component unmount
+        return () => {
+            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+            window.removeEventListener('appinstalled', handleAppInstalled);
+        };
+    }, []); // Empty dependency array ensures this runs only once.
+
+
+    const handleInstallClick = async () => {
+        if (!installPromptEvent) {
+            console.error('[PWA] Intento de instalar sin un evento válido.');
+            return;
+        }
+        installPromptEvent.prompt();
+        const { outcome } = await installPromptEvent.userChoice;
+        if (outcome === 'accepted') {
+            console.log('✅ [PWA] El usuario aceptó la instalación.');
+        } else {
+            console.log('ℹ️ [PWA] El usuario descartó la instalación.');
+        }
+        setInstallPromptEvent(null);
+    };
+
+    const handleDismissInstall = () => {
+        console.log('ℹ️ [PWA] El usuario descartó el banner personalizado.');
+        setInstallPromptEvent(null);
+    };
+
 
     const fetchData = useCallback(async () => {
       try {
@@ -62,7 +150,7 @@ const MainApp: React.FC<MainAppProps> = ({ user, token, onLogout }) => {
         const adminData = await adminIdRes.json();
         setAdminId(adminData.adminId);
         
-        if (acceptedInsurancesRes?.ok) {
+        if (acceptedInsurancesRes.ok) {
             const acceptedDetails = await acceptedInsurancesRes.json();
             setAcceptedInsuranceDetails(acceptedDetails);
             setAcceptedInsurances(acceptedDetails.map((ins: Insurance) => ins.id));
@@ -365,80 +453,73 @@ const MainApp: React.FC<MainAppProps> = ({ user, token, onLogout }) => {
         } catch (error) { console.error("Error saving clinic info:", error); }
     };
 
-    const saveAcceptedInsurances = async (acceptedIds: string[]) => {
+    const saveAcceptedInsurances = async (ids: string[]) => {
         try {
             const response = await fetch(`${API_BASE_URL}/insurances/accepted`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeader }, body: JSON.stringify({ accepted: acceptedIds })
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...authHeader },
+                body: JSON.stringify({ accepted: ids })
             });
-             if (!response.ok) throw new Error('Failed to save insurances');
+            if (!response.ok) throw new Error('Failed to save accepted insurances');
             await fetchData();
-        } catch (error) { console.error("Error saving accepted insurances:", error); }
+        } catch (error) {
+            console.error("Error saving accepted insurances:", error);
+        }
     };
 
     if (isLoading) {
-        return <div className="flex justify-center items-center h-screen text-xl text-primary dark:text-text-light">Cargando clínica...</div>;
+        return <div className="flex justify-center items-center h-screen text-xl text-primary dark:text-text-light">Cargando datos de la clínica...</div>;
     }
 
-    if (error || !doctorProfile || !clinicInfo) {
-        return <div className="flex justify-center items-center h-screen text-xl text-red-500 p-8 text-center">{error}</div>;
+    if (error) {
+        return <div className="flex justify-center items-center h-screen text-xl text-red-500">Error: {error}</div>;
     }
 
-    const patientViewProps = {
-        user, adminId, doctorProfile, services, appointments, chatMessages, clinicInfo,
-        acceptedInsurances: acceptedInsuranceDetails,
-        requestAppointment, sendChatMessage
-    };
-    
-    const adminViewProps = {
-        user, token,
-        doctorProfile, saveDoctorProfile, services, saveService, deleteService,
-        clinicInfo, saveClinicInfo, appointments, confirmAppointment,
-        allInsurances, acceptedInsurances, saveAcceptedInsurances, sendChatMessage,
-        unreadChatCount, fetchUnreadCount, clearChatNotifications
-    };
+    if (!doctorProfile || !clinicInfo) {
+        return <div className="flex justify-center items-center h-screen text-xl text-primary dark:text-text-light">Inicializando aplicación...</div>;
+    }
 
     return (
-        <div className="min-h-screen flex flex-col">
-            <header className="bg-primary text-white shadow-md sticky top-0 z-40">
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex items-center justify-between h-20">
-                        <Link to="/" className="flex items-center gap-3">
-                            <Logo className="h-16 w-auto flex-shrink-0 sm:h-20" />
-                            <span className="hidden sm:block font-bold text-base md:text-lg text-white leading-tight">
-                                ZERQUERA INTEGRATIVE MEDICAL INSTITUTE
-                            </span>
-                        </Link>
-                        <div className="flex items-center gap-2 sm:gap-4">
-                           <div className="text-sm">
-                                <span className="font-semibold">{user.name}</span> ({user.role})
-                           </div>
-                            <div className="border-l border-white/20 h-8"></div>
-                            <ThemeToggle />
-                            <NotificationCenter notifications={notifications} setNotifications={setNotifications} userId={isAdminView ? 'admin' : user.id.toString()} />
-                             <button onClick={onLogout} title="Cerrar Sesión" className="text-white/80 hover:text-white p-2 rounded-full hover:bg-white/20 transition-colors">
-                                <LogOutIcon className="h-6 w-6" />
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </header>
-
-            <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                 {isAdminView ? (
-                     <AdminView {...adminViewProps}/>
+        <div className="flex flex-col min-h-screen bg-bg-alt dark:bg-bg-dark">
+            <Header user={user} onLogout={onLogout} clinicInfo={clinicInfo} notifications={notifications} setNotifications={setNotifications} />
+            {installPromptEvent && <InstallPWAButton onInstall={handleInstallClick} onDismiss={handleDismissInstall} />}
+            <main className="flex-grow p-4 sm:p-6 lg:p-8">
+                {isAdminView ? (
+                    <AdminView
+                        user={user}
+                        token={token}
+                        clinicInfo={clinicInfo}
+                        saveClinicInfo={saveClinicInfo}
+                        services={services}
+                        saveService={saveService}
+                        deleteService={deleteService}
+                        doctorProfile={doctorProfile}
+                        saveDoctorProfile={saveDoctorProfile}
+                        appointments={appointments}
+                        confirmAppointment={confirmAppointment}
+                        allInsurances={allInsurances}
+                        acceptedInsurances={acceptedInsurances}
+                        saveAcceptedInsurances={saveAcceptedInsurances}
+                        sendChatMessage={sendChatMessage}
+                        unreadChatCount={unreadChatCount}
+                        fetchUnreadCount={fetchUnreadCount}
+                        clearChatNotifications={clearChatNotifications}
+                    />
                 ) : (
-                    <Routes>
-                       <Route path="/*" element={<PatientView {...patientViewProps} />} />
-                    </Routes>
+                    <PatientView
+                        user={user}
+                        adminId={adminId}
+                        doctorProfile={doctorProfile}
+                        services={services}
+                        appointments={appointments}
+                        chatMessages={chatMessages}
+                        clinicInfo={clinicInfo}
+                        acceptedInsurances={acceptedInsuranceDetails}
+                        requestAppointment={requestAppointment}
+                        sendChatMessage={sendChatMessage}
+                    />
                 )}
             </main>
-            
-            <footer className="bg-slate-800 text-text-light">
-                <div className="container mx-auto py-4 px-4 sm:px-6 lg:px-8 text-center text-sm text-slate-300">
-                    <p>&copy; {new Date().getFullYear()} Dr. Zerquera. Todos los derechos reservados.</p>
-                    <p>Desarrollado con fines de demostración.</p>
-                </div>
-            </footer>
         </div>
     );
 };

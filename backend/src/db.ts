@@ -26,4 +26,15 @@ pool.on('connect', () => {
   console.log('Connected to the database');
 });
 
+// Añadido: Manejador de errores para el pool de conexiones.
+// Esto es crucial para la estabilidad. Sin esto, un error en un cliente
+// inactivo puede hacer que todo el proceso de Node se cierre sin un log claro.
+pool.on('error', (err, client) => {
+  console.error('❌ Error inesperado en un cliente de base de datos inactivo', err);
+  // En un entorno de producción, es una buena práctica reiniciar el proceso
+  // ante un error grave de base de datos para asegurar un estado limpio.
+  process.exit(-1);
+});
+
+
 export default pool;

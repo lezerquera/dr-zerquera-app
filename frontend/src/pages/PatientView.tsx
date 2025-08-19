@@ -4,7 +4,7 @@ import type { DoctorProfile, Service, Appointment, ChatMessage, ClinicInfo, Insu
 import { 
     CalendarIcon, UsersIcon, StethoscopeIcon, MessageSquareIcon, ClipboardIcon, SparklesIcon, SendIcon, 
     CheckCircleIcon, TargetIcon, RefreshCwIcon, ClockIcon, ShieldIcon, MapPinIcon, PhoneIcon,
-    WhatsAppIcon, LightbulbIcon, GraduationCapIcon, BriefcaseIcon, AlertTriangleIcon, BuildingIcon, DesktopIcon
+    WhatsAppIcon, LightbulbIcon, GraduationCapIcon, BriefcaseIcon, AlertTriangleIcon, BuildingIcon, DesktopIcon, MailIcon
 } from '../components/Icons';
 import { PageWrapper } from '../components/PageWrapper';
 import { Modal } from '../components/Modal';
@@ -96,7 +96,7 @@ const AppointmentHistory = ({ appointments }: { appointments: Appointment[] }) =
         });
     };
 
-    const AppointmentCard = ({ app }: { app: Appointment }) => {
+    const AppointmentCard: React.FC<{ app: Appointment }> = ({ app }) => {
         const getStatusChip = (status: Appointment['status']) => {
             switch (status) {
                 case 'Confirmada': return 'bg-accent-turquoise/10 text-accent-turquoise border-accent-turquoise';
@@ -190,9 +190,18 @@ const ClinicContactInfo = ({ clinicInfo }: { clinicInfo: ClinicInfo }) => {
                 <div className="flex items-start gap-3">
                     <PhoneIcon className="w-5 h-5 mt-1 text-muted dark:text-muted flex-shrink-0" />
                     <div>
-                        <p className="font-semibold">Contacto</p>
+                        <p className="font-semibold">Teléfono</p>
                         <a href={`tel:${clinicInfo.phone.replace(/\D/g, '')}`} className="text-muted dark:text-main/80 hover:text-primary dark:hover:text-accent-turquoise hover:underline">
                             {clinicInfo.phone}
+                        </a>
+                    </div>
+                </div>
+                <div className="flex items-start gap-3">
+                    <MailIcon className="w-5 h-5 mt-1 text-muted dark:text-muted flex-shrink-0" />
+                    <div>
+                        <p className="font-semibold">Correo Electrónico</p>
+                        <a href={`mailto:${clinicInfo.email}`} className="text-muted dark:text-main/80 hover:text-primary dark:hover:text-accent-turquoise hover:underline">
+                            {clinicInfo.email}
                         </a>
                     </div>
                 </div>
@@ -426,7 +435,8 @@ const ServiceDetailModal = ({ service, clinicInfo, onClose }: { service: Service
                 <div className="text-center text-muted dark:text-main/80 space-y-2 my-8 border-t border-border-main dark:border-border-dark pt-6">
                      <div className="flex items-center justify-center gap-2"><MapPinIcon className="w-5 h-5 text-muted-dark"/><p>{clinicInfo.address}</p></div>
                      <div className="flex items-center justify-center gap-2"><PhoneIcon className="w-5 h-5 text-muted-dark"/><p>{clinicInfo.phone}</p></div>
-                     <a href={`https://${clinicInfo.website}`} target="_blank" rel="noopener noreferrer" className="text-primary dark:text-accent-turquoise hover:underline">{clinicInfo.website}</a>
+                     <div className="flex items-center justify-center gap-2"><MailIcon className="w-5 h-5 text-muted-dark"/><a href={`mailto:${clinicInfo.email}`} className="text-primary dark:text-accent-turquoise hover:underline">{clinicInfo.email}</a></div>
+                     <a href={`https://${clinicInfo.website}`} target="_blank" rel="noopener noreferrer" className="text-primary dark:text-accent-turquoise hover:underline block">{clinicInfo.website}</a>
                 </div>
 
                 <div className="flex flex-col gap-4">
