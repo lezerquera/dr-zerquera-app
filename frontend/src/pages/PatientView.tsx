@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { NavLink, Route, Routes, Link, useLocation, useParams, useNavigate } from 'react-router-dom';
 import type { DoctorProfile, Service, Appointment, ChatMessage, ClinicInfo, Insurance, User, FormTemplate, PatientFormSubmission, Question, ClinicalWizardAnswers, BodyPainPoint, QuestionType } from '../types';
@@ -62,18 +60,15 @@ const PatientNavLink = ({ to, icon, label }: { to: string; icon: React.ReactNode
     const baseClasses = 'flex items-center p-3 text-sm font-medium rounded-md transition-colors duration-200';
     const activeClasses = 'bg-accent-warm text-primary font-semibold';
     const inactiveClasses = 'text-muted dark:text-muted hover:text-main dark:hover:text-main hover:bg-accent-warm/30 dark:hover:bg-primary/10';
-    const location = useLocation();
-    
-    // Check if the current path exactly matches the `to` prop.
-    // For the dashboard (to=""), we check if the path is exactly the base patient path.
-    // The patient base path in MainApp is `/`.
-    // We use `end` prop in NavLink to ensure this matching behavior.
-    const isActive = location.pathname === (to === '' ? '/' : `/${to}`);
 
     return (
-        <NavLink to={to} end className={`${baseClasses} ${location.pathname.startsWith('/' + to) && to !== '' ? activeClasses : (to === '' && location.pathname === '/' ? activeClasses : inactiveClasses)}`}>
-            {icon}
-            <span className="ml-3">{label}</span>
+        <NavLink to={to} end={to === ''}>
+            {({ isActive }) => (
+                <div className={`${baseClasses} ${isActive ? activeClasses : inactiveClasses}`}>
+                    {icon}
+                    <span className="ml-3">{label}</span>
+                </div>
+            )}
         </NavLink>
     );
 };
@@ -1199,9 +1194,9 @@ const BodyMapBack = ({ onClick, selectedParts }: { onClick: (part: string) => vo
                 <BodyPart id="brazo-superior-derecho" title="Brazo superior posterior der." d="M210,108c9,0,15.8,7.4,15.4,16.2-.8,18.8-4.7,38.8-7.4,49-2.3,8.9-9.1,15-18.3,15-5,0-9.1-4.1-8.9-9.1l2.2-56.3c.4-10.8,6.2-14.8,17-14.8Z" />
                 <BodyPart id="brazo-superior-izquierdo" title="Brazo superior posterior izq." d="M90,108c-9,0-15.8,7.4-15.4,16.2,.8,18.8,4.7,38.8,7.4,49,2.3,8.9,9.1,15,18.3,15,5,0,9.1-4.1,8.9-9.1l-2.2-56.3c-.4-10.8-6.2-14.8-17-14.8Z" />
                 <BodyPart id="antebrazo-derecho" title="Antebrazo posterior der." d="M220,170c6.8,0,12.1,6,11.1,12.7-2.2,14.4-6.2,33.8-8.4,44.4-1.7,8.2-8.8,13.9-17.1,13.9-4.8,0-8.7-3.9-8.5-8.7l2-43.6c.6-10.4,8-18.7,20.9-18.7Z" />
-                <BodyPart id="antebrazo-izquierdo" title="Antebrazo posterior izq." d="M80,170c-6.8,0-12.1,6-11.1,12.7,2.2,14.4,6.2,33.8,8.4,44.4,1.7,8.2,8.8,13.9,17.1,13.9,4.8,0,8.7-3.9,8.5-8.7l-2-43.6c-.6-10.4-8-18.7-20.9-18.7Z" />
+                <BodyPart id="antebrazo-izquierdo" title="Antebrazo posterior izq." d="M80,170c-6.8,0-12.1,6-11.1,12.7,2.2,14.4,6.2,33.8,8.4,44.4,1.7,8.2-8.8,13.9-17.1,13.9,4.8,0,8.7-3.9,8.5-8.7l-2-43.6c-.6-10.4-8-18.7-20.9-18.7Z" />
                 <BodyPart id="mano-derecha" title="Mano (dorso) der." d="M214,279c9,0,16,7.3,16,16.3,0,7.4-3.1,14.5-8.5,19.5-4.3,4-9.8,6.2-15.6,6.2-4.9,0-8.9-4-8.9-8.9,0-16.3,4.2-33.1,17-33.1Z" />
-                <BodyPart id="mano-izquierda" title="Mano (dorso) izq." d="M86,279c-9,0-16,7.3-16,16.3,0,7.4,3.1,14.5,8.5,19.5,4.3,4,9.8,6.2,15.6,6.2,4.9,0,8.9-4,8.9-8.9,0-16.3,4.2-33.1-17-33.1Z" />
+                <BodyPart id="mano-izquierda" title="Mano (dorso) izq." d="M86,279c-9,0-16,7.3-16,16.3,0,7.4,3.1,14.5,8.5,19.5,4.3,4,9.8,6.2,15.6,6.2,4.9,0-8.9-4-8.9-8.9,0-16.3,4.2-33.1-17-33.1Z" />
                 <BodyPart id="muslo-derecho" title="Muslo posterior derecho" d="M172,290c11,0,20,8.9,20,19.9,0,22.5-2.1,61.2-4.5,80.8-1.4,10.7-9.9,18.7-20.6,18.7-6.1,0-10.9-4.8-10.9-10.9v-77.6c0-8.8,6.2-30.9,16-30.9Z" />
                 <BodyPart id="muslo-izquierdo" title="Muslo posterior izquierdo" d="M128,290c-11,0-20,8.9-20,19.9,0,22.5,2.1,61.2,4.5,80.8,1.4,10.7,9.9,18.7,20.6,18.7,6.1,0,10.9-4.8,10.9-10.9v-77.6c0-8.8,6.2-30.9-16-30.9Z" />
                 <BodyPart id="pierna-inferior-derecha" title="Pantorrilla derecha" d="M170,418c9.3,0,16.7,7.6,16.4,16.9-.7,17.1-2.7,44.6-4.6,58.1,1.3,8.8,8.8,15.3,17.7,15.3,5.6,0,10.1-4.5,10.1-10.1v-63.5c0-9.1-6.9-16.7-16-16.7Z" />
