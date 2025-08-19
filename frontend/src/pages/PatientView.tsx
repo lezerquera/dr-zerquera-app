@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { NavLink, Route, Routes, Link, useLocation, useParams, useNavigate } from 'react-router-dom';
 import type { DoctorProfile, Service, Appointment, ChatMessage, ClinicInfo, Insurance, User, FormTemplate, PatientFormSubmission, Question, ClinicalWizardAnswers, BodyPainPoint, QuestionType } from '../types';
@@ -1163,8 +1164,6 @@ const BodyMapFront = ({ onClick, selectedParts }: { onClick: (part: string) => v
                 <BodyPart id="mano-derecha" title="Mano derecha" d="M214,279c9,0,16,7.3,16,16.3,0,7.4-3.1,14.5-8.5,19.5-4.3,4-9.8,6.2-15.6,6.2-4.9,0-8.9-4-8.9-8.9,0-16.3,4.2-33.1,17-33.1Z" />
                 <BodyPart id="muslo-izquierdo" title="Muslo izquierdo" d="M128,290c-11,0-20,8.9-20,19.9,0,21.9,1.9,59.9,4.2,78.9,1.3,10.6,9.8,18.6,20.5,18.6,6,0,10.8-4.8,10.8-10.8V306c0-8.8-6.2-16-15.5-16Z" />
                 <BodyPart id="muslo-derecho" title="Muslo derecho" d="M172,290c11,0,20,8.9,20,19.9,0,21.9-1.9,59.9-4.2,78.9-1.3,10.6-9.8,18.6-20.5,18.6-6,0-10.8-4.8-10.8-10.8V306c0-8.8,6.2-16,15.5-16Z" />
-                <BodyPart id="rodilla-izquierda" title="Rodilla izquierda" d="M132,390c-8,0-14.5,6.5-14.5,14.5s6.5,14.5,14.5,14.5,14.5-6.5,14.5-14.5-6.5-14.5-14.5-14.5Z" />
-                <BodyPart id="rodilla-derecha" title="Rodilla derecha" d="M168,390c8,0,14.5,6.5,14.5,14.5s-6.5,14.5-14.5,14.5-14.5-6.5-14.5-14.5,6.5-14.5,14.5-14.5Z" />
                 <BodyPart id="pierna-inferior-izquierda" title="Pierna inferior izquierda" d="M130,417c-9.5,0-17,7.7-16.6,17.2,.7,17.6,2.8,45.8,4.8,59.8,1.3,9.1,9.1,15.9,18.3,15.9,5.7,0,10.3-4.6,10.3-10.3v-65.9c0-8.9-7.2-16.7-16.8-16.7Z" />
                 <BodyPart id="pierna-inferior-derecha" title="Pierna inferior derecha" d="M170,417c9.5,0,17,7.7,16.6,17.2-.7,17.6-2.8,45.8-4.8,59.8-1.3,9.1-9.1,15.9-18.3,15.9-5.7,0-10.3-4.6-10.3-10.3v-65.9c0-8.9,7.2-16.7,16.8-16.7Z" />
                 <BodyPart id="pie-izquierdo" title="Pie izquierdo" d="M126,510c-10,0-18,8-18,18,0,8,6,14,14,15l22,3c6,.8,11-4,11-10v-8c0-4.4-3.6-8-8-8h-21Z" />
@@ -1197,16 +1196,18 @@ const BodyMapBack = ({ onClick, selectedParts }: { onClick: (part: string) => vo
                 <BodyPart id="espalda-superior" title="Espalda superior" d="M108,100c-10,0-17,8.2-15.6,18,1.9,12.8,5.6,25.4,9.8,33.9,7.2,14.3,17.9,18.8,47.8,18.8s40.6-4.5,47.8-18.8c4.2-8.5,7.9-21.1,9.8-33.9,1.4-9.8-5.6-18-15.6-18H108Z" />
                 <BodyPart id="espalda-inferior" title="Espalda inferior" d="M118,170c-7,0-12.7,5.7-12.5,12.7,.3,11.6,2.3,24.5,6.9,35.3,7.5,17.5,19.1,25,37.6,25s30.1-7.5,37.6-25c4.6-10.8,6.6-23.7,6.9-35.3,.2-7-5.5-12.7-12.5-12.7H118Z" />
                 <BodyPart id="gluteos" title="Glúteos" d="M120,244c-10,0-16,9-13,18,6,18,19,32,43,32s37-14,43-32c3-9-3-18-13-18h-60Z" />
-                <BodyPart id="deltoide-izquierdo" title="Deltoide izquierdo" d="M90,108c-9,0-15.8,7.4-15.4,16.2,.8,18.8,4.7,38.8,7.4,49,2.3,8.9,9.1,15,18.3,15,5,0,9.1-4.1,8.9-9.1l-2.2-56.3c-.4-10.8-6.2-14.8-17-14.8Z" />
-                <BodyPart id="deltoide-derecho" title="Deltoide derecho" d="M210,108c9,0,15.8,7.4,15.4,16.2-.8,18.8-4.7,38.8-7.4,49-2.3,8.9-9.1,15-18.3,15-5,0-9.1-4.1-8.9-9.1l2.2-56.3c.4-10.8,6.2-14.8,17-14.8Z" />
-                <BodyPart id="brazo-superior-post-izquierdo" title="Brazo superior posterior izq." d="M80,170c-6.8,0-12.1,6-11.1,12.7,2.2,14.4,6.2,33.8,8.4,44.4,1.7,8.2,8.8,13.9,17.1,13.9,4.8,0,8.7-3.9,8.5-8.7l-2-43.6c-.6-10.4-8-18.7-20.9-18.7Z" />
-                <BodyPart id="brazo-superior-post-derecho" title="Brazo superior posterior der." d="M220,170c6.8,0,12.1,6,11.1,12.7-2.2,14.4-6.2,33.8-8.4,44.4-1.7,8.2-8.8,13.9-17.1,13.9-4.8,0-8.7-3.9-8.5-8.7l2-43.6c.6-10.4,8-18.7,20.9-18.7Z" />
-                <BodyPart id="isquiotibiales-izquierdo" title="Muslo posterior izquierdo" d="M128,290c-11,0-20,8.9-20,19.9,0,22.5,2.1,61.2,4.5,80.8,1.4,10.7,9.9,18.7,20.6,18.7,6.1,0,10.9-4.8,10.9-10.9v-77.6c0-8.8-6.2-30.9-16-30.9Z" />
-                <BodyPart id="isquiotibiales-derecho" title="Muslo posterior derecho" d="M172,290c11,0,20,8.9,20,19.9,0,22.5-2.1,61.2-4.5,80.8-1.4,10.7-9.9,18.7-20.6,18.7-6.1,0-10.9-4.8-10.9-10.9v-77.6c0-8.8,6.2-30.9,16-30.9Z" />
-                <BodyPart id="pantorrilla-izquierda" title="Pantorrilla izquierda" d="M130,418c-9.3,0-16.7,7.6-16.4,16.9,.7,17.1,2.7,44.6,4.6,58.1,1.3,8.8,8.8,15.3,17.7,15.3,5.6,0,10.1-4.5,10.1-10.1v-63.5c0-9.1-6.9-16.7-16-16.7Z" />
-                <BodyPart id="pantorrilla-derecha" title="Pantorrilla derecha" d="M170,418c9.3,0,16.7,7.6,16.4,16.9-.7,17.1-2.7,44.6-4.6,58.1-1.3,8.8-8.8,15.3-17.7,15.3-5.6,0-10.1-4.5-10.1-10.1v-63.5c0-9.1,6.9-16.7,16-16.7Z" />
-                <BodyPart id="talon-izquierdo" title="Talón izquierdo" d="M128,514c-7.6,0-13.8,6.2-13.8,13.8,0,6.4,4.6,11.9,10.9,13.1l19.6,3.8c5,.9,9.4-2.9,9.4-8,0-10.5-8.5-22.7-26.1-22.7Z" />
-                <BodyPart id="talon-derecho" title="Talón derecho" d="M172,514c7.6,0,13.8,6.2,13.8,13.8,0,6.4-4.6,11.9-10.9,13.1l-19.6,3.8c-5,.9-9.4-2.9-9.4-8,0-10.5,8.5-22.7,26.1-22.7Z" />
+                <BodyPart id="brazo-superior-derecho" title="Brazo superior posterior der." d="M210,108c9,0,15.8,7.4,15.4,16.2-.8,18.8-4.7,38.8-7.4,49-2.3,8.9-9.1,15-18.3,15-5,0-9.1-4.1-8.9-9.1l2.2-56.3c.4-10.8,6.2-14.8,17-14.8Z" />
+                <BodyPart id="brazo-superior-izquierdo" title="Brazo superior posterior izq." d="M90,108c-9,0-15.8,7.4-15.4,16.2,.8,18.8,4.7,38.8,7.4,49,2.3,8.9,9.1,15,18.3,15,5,0,9.1-4.1,8.9-9.1l-2.2-56.3c-.4-10.8-6.2-14.8-17-14.8Z" />
+                <BodyPart id="antebrazo-derecho" title="Antebrazo posterior der." d="M220,170c6.8,0,12.1,6,11.1,12.7-2.2,14.4-6.2,33.8-8.4,44.4-1.7,8.2-8.8,13.9-17.1,13.9-4.8,0-8.7-3.9-8.5-8.7l2-43.6c.6-10.4,8-18.7,20.9-18.7Z" />
+                <BodyPart id="antebrazo-izquierdo" title="Antebrazo posterior izq." d="M80,170c-6.8,0-12.1,6-11.1,12.7,2.2,14.4,6.2,33.8,8.4,44.4,1.7,8.2,8.8,13.9,17.1,13.9,4.8,0,8.7-3.9,8.5-8.7l-2-43.6c-.6-10.4-8-18.7-20.9-18.7Z" />
+                <BodyPart id="mano-derecha" title="Mano (dorso) der." d="M214,279c9,0,16,7.3,16,16.3,0,7.4-3.1,14.5-8.5,19.5-4.3,4-9.8,6.2-15.6,6.2-4.9,0-8.9-4-8.9-8.9,0-16.3,4.2-33.1,17-33.1Z" />
+                <BodyPart id="mano-izquierda" title="Mano (dorso) izq." d="M86,279c-9,0-16,7.3-16,16.3,0,7.4,3.1,14.5,8.5,19.5,4.3,4,9.8,6.2,15.6,6.2,4.9,0,8.9-4,8.9-8.9,0-16.3,4.2-33.1-17-33.1Z" />
+                <BodyPart id="muslo-derecho" title="Muslo posterior derecho" d="M172,290c11,0,20,8.9,20,19.9,0,22.5-2.1,61.2-4.5,80.8-1.4,10.7-9.9,18.7-20.6,18.7-6.1,0-10.9-4.8-10.9-10.9v-77.6c0-8.8,6.2-30.9,16-30.9Z" />
+                <BodyPart id="muslo-izquierdo" title="Muslo posterior izquierdo" d="M128,290c-11,0-20,8.9-20,19.9,0,22.5,2.1,61.2,4.5,80.8,1.4,10.7,9.9,18.7,20.6,18.7,6.1,0,10.9-4.8,10.9-10.9v-77.6c0-8.8,6.2-30.9-16-30.9Z" />
+                <BodyPart id="pierna-inferior-derecha" title="Pantorrilla derecha" d="M170,418c9.3,0,16.7,7.6,16.4,16.9-.7,17.1-2.7,44.6-4.6,58.1,1.3,8.8,8.8,15.3,17.7,15.3,5.6,0,10.1-4.5,10.1-10.1v-63.5c0-9.1-6.9-16.7-16-16.7Z" />
+                <BodyPart id="pierna-inferior-izquierda" title="Pantorrilla izquierda" d="M130,418c-9.3,0-16.7,7.6-16.4,16.9,.7,17.1,2.7,44.6,4.6,58.1-1.3,8.8-8.8,15.3-17.7,15.3-5.6,0-10.1-4.5-10.1-10.1v-63.5c0-9.1,6.9-16.7-16-16.7Z" />
+                <BodyPart id="pie-derecho" title="Talón derecho" d="M172,514c7.6,0,13.8,6.2,13.8,13.8,0,6.4-4.6,11.9-10.9,13.1l-19.6,3.8c-5,.9-9.4-2.9-9.4-8,0-10.5,8.5-22.7,26.1-22.7Z" />
+                <BodyPart id="pie-izquierdo" title="Talón izquierdo" d="M128,514c-7.6,0-13.8,6.2-13.8,13.8,0,6.4,4.6,11.9,10.9,13.1l19.6,3.8c5,.9,9.4-2.9,9.4-8,0-10.5-8.5-22.7-26.1-22.7Z" />
             </g>
         </svg>
     );

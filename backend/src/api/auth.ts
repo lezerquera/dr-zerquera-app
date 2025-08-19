@@ -1,4 +1,3 @@
-
 import express from 'express';
 import * as bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
@@ -23,9 +22,12 @@ router.post('/register', async (req: express.Request, res: express.Response) => 
         }
         
         const passwordHash = await bcrypt.hash(password, 10);
-        
-        // FIX: Robustly handle optional insurance_id. If it's an empty string or null, pass NULL to the DB.
-        const finalInsuranceId = insuranceId ? insuranceId : null;
+
+        // CORRECCIÓN MÁS ROBUSTA:
+        // Asegurarse de que cualquier valor "vacío" (null, undefined, '', ' ') para insuranceId
+        // se convierta en NULL para la base de datos, evitando errores de clave foránea.
+        const finalInsuranceId = (insuranceId && insuranceId.trim() !== '') ? insuranceId : null;
+
 
         const newUserResult = await pool.query(
             'INSERT INTO users (email, password_hash, role, name, insurance_id) VALUES ($1, $2, $3, $4, $5) RETURNING id, email, role, name',
@@ -39,8 +41,8 @@ router.post('/register', async (req: express.Request, res: express.Response) => 
         res.status(201).json({ token });
 
     } catch (err) {
-        console.error("Registration Error:", err);
-        res.status(500).json({ error: 'Internal server error during registration' });
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
@@ -65,21 +67,16 @@ router.post('/login', async (req: express.Request, res: express.Response) => {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
         
-        const tokenPayload: User = {
-            id: user.id,
-            email: user.email,
-            role: user.role,
-            name: user.name
-        };
-
-        const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '1d' });
+        const userPayload: User = { id: user.id, email: user.email, role: user.role, name: user.name };
+        const token = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '1d' });
 
         res.json({ token });
 
     } catch (err) {
-        console.error("Login Error:", err);
-        res.status(500).json({ error: 'Internal server error during login' });
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
+
 
 export { router as authRouter };
