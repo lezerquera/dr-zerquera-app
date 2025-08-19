@@ -1,8 +1,7 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { CorsOptions } from 'cors';
 import dotenv from 'dotenv';
-import path from 'path'; // Importamos el módulo 'path' de Node.js
 import pool from './db';
 import { clinicInfoRouter } from './api/clinic';
 import { doctorProfileRouter } from './api/doctorProfile';
@@ -26,7 +25,7 @@ for (const varName of requiredEnvVars) {
     if (!process.env[varName]) {
         const errorMessage = `\n❌ FATAL ERROR: La variable de entorno requerida '${varName}' no está configurada.\nPor favor, asegúrese de que esté definida en su archivo .env (local) o en la configuración del entorno (producción).\n`;
         console.error(errorMessage);
-        process.exit(1); // Fail fast: detiene el proceso si falta configuración.
+        (process as any).exit(1); // Fail fast: detiene el proceso si falta configuración.
     }
 }
 
@@ -81,8 +80,7 @@ app.use(cors(corsOptions));
 app.use(express.json());
 
 // --- API Routes ---
-// IMPORTANTE: Las rutas de la API deben registrarse ANTES de servir los archivos estáticos.
-// Esto asegura que las peticiones a /api/* sean manejadas por el backend y no por el frontend.
+// Se registran todas las rutas de la API bajo el prefijo /api.
 app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/clinic-info', clinicInfoRouter);
@@ -94,11 +92,11 @@ app.use('/api/insurances', insurancesRouter);
 app.use('/api/forms', formsRouter); // Añadir la nueva ruta de formularios
 app.use('/api/setup', setupRouter); // Ruta de inicialización refactorizada
 
-app.get('/api', (req: express.Request, res: express.Response) => {
+app.get('/api', (req: Request, res: Response) => {
     res.send('ZIMI Backend API is running!');
 });
 
-app.get('/api/health', async (req: express.Request, res: express.Response) => {
+app.get('/api/health', async (req: Request, res: Response) => {
     try {
         await pool.query('SELECT 1');
         res.status(200).send('Backend and database connection are healthy.');
@@ -108,27 +106,7 @@ app.get('/api/health', async (req: express.Request, res: express.Response) => {
     }
 });
 
-
-// --- Servir archivos estáticos del frontend (SOLO EN PRODUCCIÓN) ---
-// En desarrollo, Vite se encarga de servir el frontend.
-if (process.env.NODE_ENV === 'production') {
-    const frontendDistPath = path.join(__dirname, '..', '..', 'frontend', 'dist');
-    console.log(`[PROD] Attempting to serve static files from: ${frontendDistPath}`);
-
-    // Servimos los assets (JS, CSS, imágenes, etc.) desde la carpeta 'dist' del frontend.
-    app.use(express.static(frontendDistPath));
-
-    // --- Catch-all para servir el index.html del frontend ---
-    // Esto es crucial para que el enrutamiento del lado del cliente (React Router) funcione.
-    app.get('*', (req: express.Request, res: express.Response) => {
-        const indexPath = path.join(frontendDistPath, 'index.html');
-        res.sendFile(indexPath, (err) => {
-            if (err) {
-                console.error('Error sending index.html:', err);
-                res.status(500).send('Internal server error while serving the application.');
-            }
-        });
-    });
-}
+// El servicio de archivos estáticos y la ruta catch-all ('*') se eliminan.
+// Vercel manejará esto a través de las reglas en `vercel.json`.
 
 export default app;
