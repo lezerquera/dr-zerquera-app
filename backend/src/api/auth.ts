@@ -43,7 +43,19 @@ router.post('/register', async (req: express.Request, res: express.Response) => 
         res.status(201).json({ token });
 
     } catch (err) {
-        console.error(err);
+        console.error("--- DETAILED REGISTRATION ERROR ---");
+        console.error(`Timestamp: ${new Date().toISOString()}`);
+        console.error(`Attempted registration for email: ${email}`);
+        console.error("Error Object:", err);
+        console.error("--- END OF DETAILED ERROR ---");
+
+        // The pre-query check handles most cases, but this catch handles race conditions
+        // or other DB-level constraints.
+        const dbError = err as { code?: string };
+        if (dbError.code === '23505') { // unique_violation code for PostgreSQL
+             return res.status(400).json({ error: 'User with this email already exists' });
+        }
+        
         res.status(500).json({ error: 'Internal server error' });
     }
 });

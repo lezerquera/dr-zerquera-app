@@ -34,33 +34,47 @@ for (const varName of requiredEnvVars) {
 const app = express();
 const port = process.env.PORT || 3001;
 
-// --- Configuración de CORS Explícita y Segura ---
-const allowedOrigins: string[] = [
+// --- Configuración de CORS Mejorada para Flexibilidad en Despliegues ---
+const baseAllowedOrigins: string[] = [
     'http://localhost:5173', // Origen para desarrollo local
 ];
 
-// Si la URL del frontend está definida en el entorno (producción), la añadimos a la lista blanca.
+// Si la URL del frontend de producción está definida en el entorno, la añadimos.
 if (process.env.FRONTEND_URL) {
-    // Normalizamos la URL para eliminar una posible barra final ('/'), que es un error común.
     const frontendUrl = process.env.FRONTEND_URL.endsWith('/')
         ? process.env.FRONTEND_URL.slice(0, -1)
         : process.env.FRONTEND_URL;
-    allowedOrigins.push(frontendUrl);
+    baseAllowedOrigins.push(frontendUrl);
     console.log(`CORS: Production frontend URL added to allowed origins: ${frontendUrl}`);
 }
 
 const corsOptions: CorsOptions = {
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-        // Permitir peticiones sin 'origin' (como las de Postman o apps móviles) o si el origen está en nuestra lista blanca.
-        if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            console.error(`CORS Blocked: El origen '${origin}' no está en la lista de permitidos: [${allowedOrigins.join(', ')}]`);
-            callback(new Error('No permitido por la política de CORS.'));
+        // Permitir peticiones sin 'origin' (como las de Postman, apps móviles o del mismo servidor).
+        if (!origin) {
+            return callback(null, true);
         }
+        
+        // Permitir orígenes de la lista base (localhost, FRONTEND_URL).
+        if (baseAllowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+
+        // Permitir dinámicamente cualquier subdominio de Vercel.
+        // Esto es ideal para los despliegues de vista previa (previews).
+        const vercelPreviewRegex = /^https:\/\/.+\.vercel\.app$/;
+        if (vercelPreviewRegex.test(origin)) {
+            console.log(`CORS: Vercel preview origin allowed: ${origin}`);
+            return callback(null, true);
+        }
+
+        // Si no coincide con ninguna regla, se rechaza.
+        console.error(`CORS Blocked: El origen '${origin}' no está permitido.`);
+        callback(new Error('No permitido por la política de CORS.'));
     },
     optionsSuccessStatus: 200,
 };
+
 
 // Middleware
 app.use(cors(corsOptions));
