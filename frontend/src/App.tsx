@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
@@ -58,8 +59,6 @@ const App: React.FC = () => {
     
     return (
         <Routes>
-            {/* --- Rutas Públicas Adicionales --- */}
-            
             {token && user ? (
                 // --- Rutas Privadas ---
                 // Si hay un token válido, se renderiza la aplicación principal.
