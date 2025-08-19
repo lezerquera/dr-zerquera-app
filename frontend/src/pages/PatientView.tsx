@@ -527,6 +527,89 @@ const AppointmentRequestForm = ({ services, requestAppointment, clinicInfo, user
     );
 };
 
+// --- START OF FORMS SECTION ---
+
+const PatientFormsManager = ({ token }: { token: string }) => {
+    const [submissions, setSubmissions] = useState<PatientFormSubmission[]>([]);
+    const [availableTemplates, setAvailableTemplates] = useState<FormTemplate[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const authHeader = useMemo(() => ({ 'Authorization': `Bearer ${token}` }), [token]);
+
+    useEffect(() => {
+        const fetchFormsData = async () => {
+            try {
+                const [submissionsRes, templatesRes] = await Promise.all([
+                    fetch(`${API_BASE_URL}/forms/my-submissions`, { headers: authHeader }),
+                    fetch(`${API_BASE_URL}/forms/templates`, { headers: authHeader })
+                ]);
+                if (!submissionsRes.ok || !templatesRes.ok) throw new Error('Failed to fetch forms data');
+                
+                const submissionsData = await submissionsRes.json();
+                const templatesData = await templatesRes.json();
+                
+                setSubmissions(submissionsData);
+                // Filter out templates that have already been submitted
+                const submittedTemplateIds = new Set(submissionsData.map((s: PatientFormSubmission) => s.templateId));
+                setAvailableTemplates(templatesData.filter((t: FormTemplate) => !submittedTemplateIds.has(t.id)));
+
+            } catch (error) {
+                console.error(error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchFormsData();
+    }, [token, authHeader]);
+    
+    if (isLoading) return <PageWrapper title="Mis Formularios"><p>Cargando...</p></PageWrapper>;
+
+    return (
+        <PageWrapper title="Mis Formularios">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                    <h2 className="text-xl font-semibold text-main dark:text-main mb-4">Formularios por Completar</h2>
+                    {availableTemplates.length > 0 ? (
+                        <ul className="space-y-3">
+                            {availableTemplates.map(template => (
+                                <li key={template.id} className="p-4 bg-bg-alt dark:bg-bg-alt rounded-lg shadow-sm flex justify-between items-center">
+                                    <div>
+                                        <h3 className="font-bold text-main dark:text-main">{template.title}</h3>
+                                        <p className="text-sm text-muted dark:text-main/80">{template.description}</p>
+                                    </div>
+                                    <Link to={`/forms/fill/${template.id}`} className="bg-primary text-white font-bold py-2 px-4 rounded-lg hover:opacity-90 text-sm">
+                                        Completar
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="text-muted dark:text-main/80 p-4 border-2 border-dashed rounded-lg text-center">No tiene formularios pendientes por completar.</p>
+                    )}
+                </div>
+                <div>
+                    <h2 className="text-xl font-semibold text-main dark:text-main mb-4">Formularios Enviados</h2>
+                    {submissions.length > 0 ? (
+                        <ul className="space-y-3">
+                            {submissions.map(sub => (
+                                <li key={sub.id} className="p-4 bg-bg-alt dark:bg-bg-alt rounded-lg shadow-sm flex justify-between items-center">
+                                    <div>
+                                        <h3 className="font-bold text-main dark:text-main">{sub.title}</h3>
+                                        <p className="text-sm text-muted dark:text-main/80">Enviado: {new Date(sub.submissionDate).toLocaleDateString('es-ES')}</p>
+                                    </div>
+                                    <CheckCircleIcon className="w-6 h-6 text-accent-turquoise" />
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="text-muted dark:text-main/80 p-4 border-2 border-dashed rounded-lg text-center">Aún no ha enviado ningún formulario.</p>
+                    )}
+                </div>
+            </div>
+        </PageWrapper>
+    );
+};
+
 const FillFormRouter = ({ token, user }: { token: string; user: User }) => {
     const { templateId } = useParams();
     const [template, setTemplate] = useState<FormTemplate | null>(null);
@@ -558,13 +641,104 @@ const FillFormRouter = ({ token, user }: { token: string; user: User }) => {
     if (!template) return <PageWrapper title="Error"><p>No se encontró el formulario solicitado.</p></PageWrapper>;
     
     if (template.formType === 'clinical_wizard') {
-        return <ClinicalWizard template={template} user={user} onSubmitSuccess={handleSubmitSuccess} />;
+        return <ClinicalWizard template={template} user={user} token={token} onSubmitSuccess={handleSubmitSuccess} />;
     }
 
     return <GenericFormFiller template={template} token={token} onSubmitSuccess={handleSubmitSuccess} />;
 };
 
-// --- START OF NEW CLINICAL WIZARD ---
+const GenericFormFiller = ({ template, token, onSubmitSuccess }: { template: FormTemplate, token: string, onSubmitSuccess: () => void }) => {
+    const [answers, setAnswers] = useState<Record<string, any>>({});
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handleAnswerChange = (questionId: string, value: any, type: QuestionType) => {
+        setAnswers(prev => {
+            const newAnswers = { ...prev };
+            if (type === 'checkbox') {
+                const current = newAnswers[questionId] || [];
+                if (current.includes(value)) {
+                    newAnswers[questionId] = current.filter((item: string) => item !== value);
+                } else {
+                    newAnswers[questionId] = [...current, value];
+                }
+            } else {
+                newAnswers[questionId] = value;
+            }
+            return newAnswers;
+        });
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}/forms/submissions`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ templateId: template.id, answers }),
+            });
+            if (!response.ok) throw new Error('Failed to submit form');
+            alert('Formulario enviado con éxito!');
+            onSubmitSuccess();
+        } catch (error) {
+            console.error(error);
+            alert('Hubo un error al enviar el formulario.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <PageWrapper title={template.title}>
+            <p className="text-muted dark:text-main/80 mb-6">{template.description}</p>
+            <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl mx-auto bg-bg-alt dark:bg-bg-alt/50 p-6 rounded-lg">
+                {template.structure.map(q => (
+                    <div key={q.id}>
+                        <label className="block text-sm font-medium text-main dark:text-main">
+                            {q.label} {q.required && <span className="text-red-500">*</span>}
+                        </label>
+                        {q.type === 'text' && <input type="text" required={q.required} onChange={e => handleAnswerChange(q.id, e.target.value, q.type)} className="mt-1 block w-full input-style" />}
+                        {q.type === 'textarea' && <textarea required={q.required} onChange={e => handleAnswerChange(q.id, e.target.value, q.type)} rows={4} className="mt-1 block w-full input-style" />}
+                        {q.type === 'select' && (
+                            <select required={q.required} onChange={e => handleAnswerChange(q.id, e.target.value, q.type)} className="mt-1 block w-full input-style">
+                                <option value="">Seleccione una opción</option>
+                                {q.options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                            </select>
+                        )}
+                        {q.type === 'radio' && (
+                            <div className="mt-2 space-y-2">
+                                {q.options?.map(opt => (
+                                    <label key={opt} className="flex items-center">
+                                        <input type="radio" name={q.id} value={opt} required={q.required} onChange={e => handleAnswerChange(q.id, e.target.value, q.type)} className="h-4 w-4"/>
+                                        <span className="ml-2 text-sm text-muted dark:text-main/80">{opt}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        )}
+                        {q.type === 'checkbox' && (
+                            <div className="mt-2 space-y-2">
+                                {q.options?.map(opt => (
+                                    <label key={opt} className="flex items-center">
+                                        <input type="checkbox" value={opt} onChange={e => handleAnswerChange(q.id, e.target.value, q.type)} className="h-4 w-4 rounded"/>
+                                        <span className="ml-2 text-sm text-muted dark:text-main/80">{opt}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                ))}
+                <div className="pt-4 text-right">
+                    <button type="submit" disabled={isSubmitting} className="bg-primary hover:opacity-90 text-white font-bold py-2 px-6 rounded-lg transition-opacity">
+                        {isSubmitting ? 'Enviando...' : 'Enviar Formulario'}
+                    </button>
+                </div>
+            </form>
+        </PageWrapper>
+    );
+};
+
+
+// --- START OF CLINICAL WIZARD ---
 const wizardSteps = [
     { number: 1, title: "Bienvenida" },
     { number: 2, title: "Datos Generales" },
@@ -575,7 +749,7 @@ const wizardSteps = [
     { number: 7, title: "Resumen y Envío" },
 ];
 
-const ClinicalWizard = ({ template, user, onSubmitSuccess }: { template: FormTemplate, user: User, onSubmitSuccess: () => void }) => {
+const ClinicalWizard = ({ template, user, token, onSubmitSuccess }: { template: FormTemplate, user: User, token: string, onSubmitSuccess: () => void }) => {
     const [step, setStep] = useState(1);
     const [answers, setAnswers] = useState<ClinicalWizardAnswers>({
         generalData: { fullName: user.name, age: '', gender: '', occupation: '', contact: '' },
@@ -585,7 +759,6 @@ const ClinicalWizard = ({ template, user, onSubmitSuccess }: { template: FormTem
         tongue: []
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const navigate = useNavigate();
     
     const totalSteps = wizardSteps.length;
 
@@ -622,7 +795,7 @@ const ClinicalWizard = ({ template, user, onSubmitSuccess }: { template: FormTem
         try {
             const response = await fetch(`${API_BASE_URL}/forms/submissions`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ templateId: template.id, answers }),
             });
             if (!response.ok) throw new Error('Failed to submit form');
@@ -644,7 +817,7 @@ const ClinicalWizard = ({ template, user, onSubmitSuccess }: { template: FormTem
             case 4: return <StepBodyMap answers={answers} setAnswers={setAnswers} />;
             case 5: return <StepMTC answers={answers.mtc!} onChange={handleMTCChange} />;
             case 6: return <StepTongue answers={answers.tongue!} onChange={handleTongueChange} />;
-            case 7: return <StepSummary answers={answers} goToStep={goToStep} onSubmit={handleSubmit} isSubmitting={isSubmitting} />;
+            case 7: return <StepSummary answers={answers} goToStep={goToStep} />;
             default: return null;
         }
     };
@@ -653,7 +826,7 @@ const ClinicalWizard = ({ template, user, onSubmitSuccess }: { template: FormTem
         <PageWrapper title={template.title}>
             <div className="bg-bg-alt dark:bg-bg-alt/50 p-4 sm:p-8 rounded-xl shadow-lg">
                 <WizardProgress currentStep={step} totalSteps={totalSteps} />
-                <div className="mt-8">
+                <div className="mt-8 min-h-[300px]">
                     {renderStepContent()}
                 </div>
                 <div className="mt-8 pt-6 border-t border-border-main dark:border-border-dark flex justify-between items-center">
@@ -742,28 +915,231 @@ const StepReason = ({ answers, onChange }: { answers: NonNullable<ClinicalWizard
 };
 
 const StepBodyMap = ({ answers, setAnswers }: { answers: ClinicalWizardAnswers, setAnswers: React.Dispatch<React.SetStateAction<ClinicalWizardAnswers>> }) => {
-    // Component implementation will go here
-    return <div>Body Map Placeholder</div>;
+    const [view, setView] = useState<'front' | 'back'>('front');
+    const [selectedBodyPart, setSelectedBodyPart] = useState<string | null>(null);
+    const [painDetails, setPainDetails] = useState({ painType: '', intensity: 5, duration: '' });
+
+    const handleBodyPartClick = (part: string) => {
+        setPainDetails({ painType: '', intensity: 5, duration: '' });
+        setSelectedBodyPart(part);
+    };
+
+    const handleSavePainPoint = () => {
+        if (!selectedBodyPart || !painDetails.painType || !painDetails.duration) {
+            alert("Por favor complete todos los campos.");
+            return;
+        }
+        const newPoint: BodyPainPoint = {
+            bodyPart: selectedBodyPart,
+            painType: painDetails.painType,
+            intensity: painDetails.intensity,
+            duration: painDetails.duration,
+            view: view
+        };
+        setAnswers(prev => ({ ...prev, bodyMap: [...(prev.bodyMap || []), newPoint] }));
+        setSelectedBodyPart(null);
+    };
+    
+    const removePainPoint = (index: number) => {
+        setAnswers(prev => ({ ...prev, bodyMap: prev.bodyMap?.filter((_, i) => i !== index) }));
+    };
+
+    const pointsOnCurrentView = answers.bodyMap?.filter(p => p.view === view) || [];
+
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+            <div>
+                <div className="flex justify-center gap-4 mb-4">
+                    <button onClick={() => setView('front')} className={`px-4 py-2 rounded-md ${view === 'front' ? 'btn-primary' : 'btn-secondary'}`}>Vista Frontal</button>
+                    <button onClick={() => setView('back')} className={`px-4 py-2 rounded-md ${view === 'back' ? 'btn-primary' : 'btn-secondary'}`}>Vista Trasera</button>
+                </div>
+                <div className="relative">
+                    {view === 'front' ? <BodyMapFront onClick={handleBodyPartClick} selectedParts={pointsOnCurrentView.map(p => p.bodyPart)} /> : <BodyMapBack onClick={handleBodyPartClick} selectedParts={pointsOnCurrentView.map(p => p.bodyPart)} />}
+                </div>
+            </div>
+            <div>
+                <h4 className="font-semibold mb-2">Puntos de Dolor Registrados</h4>
+                <ul className="space-y-2 mb-4 h-32 overflow-y-auto bg-bg-main dark:bg-surface-dark p-2 rounded-md">
+                    {answers.bodyMap?.map((point, index) => (
+                        <li key={index} className="flex justify-between items-center text-sm p-2 bg-accent-warm/50 rounded">
+                            <span>{point.bodyPart.replace(/-/g, ' ')} ({point.view}) - Intensidad: {point.intensity}/10</span>
+                            <button onClick={() => removePainPoint(index)}><TrashIcon className="w-4 h-4 text-red-500"/></button>
+                        </li>
+                    ))}
+                    {answers.bodyMap?.length === 0 && <p className="text-xs text-muted">Haga clic en una parte del cuerpo para añadir un punto de dolor.</p>}
+                </ul>
+                 {selectedBodyPart && (
+                    <Modal isOpen={!!selectedBodyPart} onClose={() => setSelectedBodyPart(null)} title={`Detalles del Dolor en ${selectedBodyPart.replace(/-/g, ' ')}`}>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium">Tipo de Dolor</label>
+                                <input type="text" value={painDetails.painType} onChange={e => setPainDetails(p => ({...p, painType: e.target.value}))} placeholder="Ej: Punzante, sordo, quemante..." className="w-full input-style" />
+                            </div>
+                             <div>
+                                <label className="block text-sm font-medium">Intensidad (0-10)</label>
+                                <input type="range" min="0" max="10" value={painDetails.intensity} onChange={e => setPainDetails(p => ({...p, intensity: parseInt(e.target.value)}))} className="w-full" />
+                                <span className="text-center block font-bold">{painDetails.intensity}</span>
+                            </div>
+                             <div>
+                                <label className="block text-sm font-medium">Duración</label>
+                                <input type="text" value={painDetails.duration} onChange={e => setPainDetails(p => ({...p, duration: e.target.value}))} placeholder="Ej: Constante, intermitente, 2 semanas..." className="w-full input-style" />
+                            </div>
+                            <div className="flex justify-end gap-2">
+                                <button onClick={() => setSelectedBodyPart(null)} className="btn-secondary">Cancelar</button>
+                                <button onClick={handleSavePainPoint} className="btn-primary">Guardar Punto</button>
+                            </div>
+                        </div>
+                    </Modal>
+                )}
+            </div>
+        </div>
+    );
 };
+
+const MTCToggle = ({ label, options, value, onChange, icons }: {label: string, options: string[], value: string, onChange: (val: string) => void, icons: React.ReactNode[] }) => (
+    <div className="p-3 bg-bg-main dark:bg-surface-dark rounded-lg">
+        <label className="block text-sm font-medium text-main dark:text-main mb-2">{label}</label>
+        <div className="flex bg-bg-alt dark:bg-bg-dark rounded-md p-1">
+            {options.map((opt, i) => (
+                <button key={opt} type="button" onClick={() => onChange(opt)} className={`flex-1 p-2 rounded text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${value === opt ? 'bg-primary text-white shadow' : 'text-muted'}`}>
+                    {icons[i]} {opt}
+                </button>
+            ))}
+        </div>
+    </div>
+);
 
 const StepMTC = ({ answers, onChange }: { answers: NonNullable<ClinicalWizardAnswers['mtc']>, onChange: Function }) => {
-    // Component implementation will go here
-    return <div>MTC Placeholder</div>;
+    return (
+        <div className="max-w-2xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-4">
+             <p className="sm:col-span-2 text-sm text-muted dark:text-main/80">Seleccione la opción que mejor describa sus síntomas generales.</p>
+             <MTCToggle label="Sensación Corporal" options={['Frío', 'Calor']} value={answers.coldHeat} onChange={(val) => onChange('coldHeat', val)} icons={[<SnowflakeIcon className="w-4 h-4"/>, <FlameIcon className="w-4 h-4"/>]} />
+             <MTCToggle label="Peor Momento del Día" options={['Día', 'Noche']} value={answers.dayNight} onChange={(val) => onChange('dayNight', val)} icons={[<SunIcon className="w-4 h-4"/>, <MoonIcon className="w-4 h-4"/>]} />
+             <MTCToggle label="Naturaleza del Síntoma" options={['Plenitud', 'Vacío']} value={answers.fullEmpty} onChange={(val) => onChange('fullEmpty', val)} icons={[<ArrowHorizontalIcon className="w-4 h-4"/>, <CircleDashedIcon className="w-4 h-4"/>]} />
+             <MTCToggle label="Inicio del Síntoma" options={['Agudo', 'Crónico']} value={answers.onset} onChange={(val) => onChange('onset', val)} icons={[<ZapIcon className="w-4 h-4"/>, <HourglassIcon className="w-4 h-4"/>]} />
+        </div>
+    );
 };
+
+const tongueFeatures = ['Pálida', 'Roja', 'Púrpura', 'Saburra Blanca', 'Saburra Amarilla', 'Saburra Gruesa', 'Grietas', 'Marcas Dentales', 'Punta Roja'];
 
 const StepTongue = ({ answers, onChange }: { answers: string[], onChange: (value: string) => void }) => {
-    // Component implementation will go here
-    return <div>Tongue Placeholder</div>;
+    return (
+        <div className="max-w-2xl mx-auto">
+            <p className="text-sm text-muted dark:text-main/80 mb-4">Mírese la lengua en un espejo y seleccione todas las características que observe. Esto nos ayuda en el diagnóstico.</p>
+            <div className="flex flex-wrap gap-3">
+                {tongueFeatures.map(feature => (
+                    <label key={feature} className={`cursor-pointer p-2 px-3 rounded-full border text-sm font-medium transition-colors ${answers.includes(feature) ? 'bg-primary text-white border-primary' : 'bg-bg-main dark:bg-surface-dark border-border-main dark:border-border-dark'}`}>
+                        <input type="checkbox" checked={answers.includes(feature)} onChange={() => onChange(feature)} className="sr-only" />
+                        {feature}
+                    </label>
+                ))}
+            </div>
+        </div>
+    );
 };
 
-const StepSummary = ({ answers, goToStep, onSubmit, isSubmitting }: { answers: ClinicalWizardAnswers, goToStep: (step: number) => void, onSubmit: () => void, isSubmitting: boolean }) => {
-    // Component implementation will go here
-    return <div>Summary Placeholder</div>;
+const SummarySection = ({ title, step, onEdit, children }: { title: string, step: number, onEdit: (step: number) => void, children: React.ReactNode }) => (
+    <div className="p-4 bg-bg-main dark:bg-surface-dark rounded-lg">
+        <div className="flex justify-between items-center mb-2">
+            <h4 className="font-semibold text-main dark:text-main">{title}</h4>
+            <button onClick={() => onEdit(step)} className="text-xs text-primary dark:text-accent-turquoise font-semibold flex items-center gap-1"><EditIcon className="w-3 h-3"/> Editar</button>
+        </div>
+        <div className="text-sm text-muted dark:text-main/80 space-y-1">{children}</div>
+    </div>
+);
+
+const StepSummary = ({ answers, goToStep }: { answers: ClinicalWizardAnswers, goToStep: (step: number) => void }) => {
+    return (
+        <div className="max-w-3xl mx-auto space-y-4">
+             <p className="text-sm text-muted dark:text-main/80">Por favor, revise la información que ha proporcionado antes de enviarla.</p>
+             <SummarySection title="Datos Generales" step={2} onEdit={goToStep}>
+                 <p><strong>Nombre:</strong> {answers.generalData?.fullName}</p>
+                 <p><strong>Edad:</strong> {answers.generalData?.age}, <strong>Sexo:</strong> {answers.generalData?.gender}</p>
+             </SummarySection>
+             <SummarySection title="Motivo de Consulta" step={3} onEdit={goToStep}>
+                 <p><strong>Motivo:</strong> {answers.consultationReason?.reason}</p>
+                 <p><strong>Duración:</strong> {answers.consultationReason?.duration}</p>
+             </SummarySection>
+             <SummarySection title="Mapa de Dolor" step={4} onEdit={goToStep}>
+                 {answers.bodyMap && answers.bodyMap.length > 0 ? (
+                    answers.bodyMap.map((p, i) => <p key={i}>- {p.bodyPart.replace(/-/g, ' ')} ({p.view}): Intensidad {p.intensity}/10, {p.painType}</p>)
+                 ) : <p>No se registraron puntos de dolor.</p>}
+             </SummarySection>
+             <SummarySection title="Principios MTC" step={5} onEdit={goToStep}>
+                 <p>{answers.mtc?.coldHeat}, {answers.mtc?.dayNight}, {answers.mtc?.fullEmpty}, {answers.mtc?.onset}</p>
+             </SummarySection>
+             <SummarySection title="Evaluación de Lengua" step={6} onEdit={goToStep}>
+                 <p>{answers.tongue?.join(', ') || 'No se seleccionaron características.'}</p>
+             </SummarySection>
+        </div>
+    );
 };
 
-const PatientFormsManager = ({ token }: { token: string }) => {
-    return <div>Patient Forms Manager Placeholder</div>;
+
+// --- BODY MAP SVG COMPONENTS ---
+
+const BodyMapFront = ({ onClick, selectedParts }: { onClick: (part: string) => void; selectedParts: string[] }) => {
+    const BodyPart = ({ id, d }: { id: string; d: string }) => (
+        <path
+            id={id}
+            d={d}
+            className={`cursor-pointer transition-colors duration-200 ${selectedParts.includes(id) ? 'fill-accent-red/80' : 'fill-gray-300 dark:fill-gray-600 hover:fill-primary/50'}`}
+            onClick={() => onClick(id)}
+        />
+    );
+    return (
+        <svg viewBox="0 0 250 500" xmlns="http://www.w3.org/2000/svg" className="w-full max-w-xs mx-auto">
+            {/* Simplified SVG paths for body parts */}
+            <g id="body-front">
+                <BodyPart id="cabeza" d="M103 10c14 0 26 12 26 26s-12 26-26 26-26-12-26-26 12-26 26-26z"/>
+                <BodyPart id="cuello" d="M103 62h44v20H103z"/>
+                <BodyPart id="hombro-derecho" d="M147 82l30 10v30l-30-10z"/>
+                <BodyPart id="hombro-izquierdo" d="M73 82l-30 10v30l30-10z"/>
+                <BodyPart id="pecho" d="M73 122h104v60H73z"/>
+                <BodyPart id="abdomen" d="M73 182h104v70H73z"/>
+                <BodyPart id="brazo-derecho" d="M177 92 l15 60 v50 l-15-60z"/>
+                <BodyPart id="brazo-izquierdo" d="M58 92 l-15 60 v50 l15-60z"/>
+                <BodyPart id="mano-derecha" d="M192 202 l10 20 v20 l-10-20z"/>
+                <BodyPart id="mano-izquierda" d="M48 202 l-10 20 v20 l10-20z"/>
+                <BodyPart id="pierna-derecha" d="M127 252 l10 100 v80 l-10-100z"/>
+                <BodyPart id="pierna-izquierda" d="M113 252 l-10 100 v80 l10-100z"/>
+                <BodyPart id="pie-derecho" d="M137 432 l15 20 h-20z"/>
+                <BodyPart id="pie-izquierdo" d="M98 432 l-15 20 h20z"/>
+            </g>
+        </svg>
+    );
 };
+
+const BodyMapBack = ({ onClick, selectedParts }: { onClick: (part: string) => void; selectedParts: string[] }) => {
+    const BodyPart = ({ id, d }: { id: string; d: string }) => (
+        <path
+            id={id}
+            d={d}
+            className={`cursor-pointer transition-colors duration-200 ${selectedParts.includes(id) ? 'fill-accent-red/80' : 'fill-gray-300 dark:fill-gray-600 hover:fill-primary/50'}`}
+            onClick={() => onClick(id)}
+        />
+    );
+    return (
+        <svg viewBox="0 0 250 500" xmlns="http://www.w3.org/2000/svg" className="w-full max-w-xs mx-auto">
+            <g id="body-back">
+                <BodyPart id="nuca" d="M103 10c14 0 26 12 26 26s-12 26-26 26-26-12-26-26 12-26 26-26z"/>
+                <BodyPart id="espalda-superior" d="M73 82h104v70H73z"/>
+                <BodyPart id="lumbar" d="M73 152h104v70H73z"/>
+                <BodyPart id="gluteos" d="M73 222h104v50H73z"/>
+                <BodyPart id="posterior-brazo-derecho" d="M177 92 l15 60 v50 l-15-60z"/>
+                <BodyPart id="posterior-brazo-izquierdo" d="M58 92 l-15 60 v50 l15-60z"/>
+                <BodyPart id="posterior-pierna-derecha" d="M127 272 l10 100 v80 l-10-100z"/>
+                <BodyPart id="posterior-pierna-izquierda" d="M113 272 l-10 100 v80 l10-100z"/>
+                <BodyPart id="talon-derecho" d="M137 452 l15 20 h-20z"/>
+                <BodyPart id="talon-izquierdo" d="M98 452 l-15 20 h20z"/>
+            </g>
+        </svg>
+    );
+};
+
+// --- END OF FORMS SECTION ---
+
 
 const ChatInterface = ({ messages, onSendMessage, user, adminId }: { messages: ChatMessage[], onSendMessage: Function, user: User, adminId: number | null }) => {
     const [newMessage, setNewMessage] = useState('');
@@ -802,8 +1178,4 @@ const ChatInterface = ({ messages, onSendMessage, user, adminId }: { messages: C
             </div>
         </div>
     </PageWrapper>;
-};
-
-const GenericFormFiller = ({ template, token, onSubmitSuccess }: { template: FormTemplate, token: string, onSubmitSuccess: () => void }) => {
-    return <div>Generic Form Filler Placeholder</div>;
 };
