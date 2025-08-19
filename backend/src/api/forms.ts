@@ -1,4 +1,6 @@
-import express, { Request, Response } from 'express';
+
+
+import express from 'express';
 import pool from '../db';
 import { verifyToken, isAdmin } from '../middleware/auth';
 import type { ClinicalWizardAnswers, BodyPainPoint } from '../shared/types';
@@ -36,7 +38,7 @@ const calculatePriority = (answers: ClinicalWizardAnswers): 'high' | 'medium' | 
 // --- Rutas para Administradores ---
 
 // GET /api/forms/templates (Admin: Obtener todas las plantillas de formularios)
-router.get('/templates', verifyToken, async (req: Request, res: Response) => {
+router.get('/templates', verifyToken, async (req: express.Request, res: express.Response) => {
     try {
         const result = await pool.query('SELECT id, title, description, structure, form_type as "formType" FROM form_templates ORDER BY created_at DESC');
         res.json(result.rows);
@@ -47,7 +49,7 @@ router.get('/templates', verifyToken, async (req: Request, res: Response) => {
 });
 
 // POST /api/forms/templates (Admin: Crear una nueva plantilla de formulario)
-router.post('/templates', verifyToken, isAdmin, async (req: Request, res: Response) => {
+router.post('/templates', verifyToken, isAdmin, async (req: express.Request, res: express.Response) => {
     const { title, description, structure } = req.body;
     if (!title || !structure) {
         return res.status(400).json({ error: 'Title and structure are required' });
@@ -65,7 +67,7 @@ router.post('/templates', verifyToken, isAdmin, async (req: Request, res: Respon
 });
 
 // PUT /api/forms/templates/:id (Admin: Actualizar una plantilla de formulario)
-router.put('/templates/:id', verifyToken, isAdmin, async (req: Request, res: Response) => {
+router.put('/templates/:id', verifyToken, isAdmin, async (req: express.Request, res: express.Response) => {
     const { id } = req.params;
     const { title, description, structure } = req.body;
     if (!title || !structure) {
@@ -87,7 +89,7 @@ router.put('/templates/:id', verifyToken, isAdmin, async (req: Request, res: Res
 });
 
 // DELETE /api/forms/templates/:id (Admin: Eliminar una plantilla de formulario)
-router.delete('/templates/:id', verifyToken, isAdmin, async (req: Request, res: Response) => {
+router.delete('/templates/:id', verifyToken, isAdmin, async (req: express.Request, res: express.Response) => {
     const { id } = req.params;
     try {
         const result = await pool.query('DELETE FROM form_templates WHERE id = $1', [id]);
@@ -104,7 +106,7 @@ router.delete('/templates/:id', verifyToken, isAdmin, async (req: Request, res: 
 // --- Rutas para Pacientes ---
 
 // GET /api/forms/templates/:id (Paciente: Obtener la estructura de un formulario específico)
-router.get('/templates/:id', verifyToken, async (req: Request, res: Response) => {
+router.get('/templates/:id', verifyToken, async (req: express.Request, res: express.Response) => {
     const { id } = req.params;
     try {
         const result = await pool.query('SELECT id, title, description, structure, form_type as "formType" FROM form_templates WHERE id = $1', [id]);
@@ -119,7 +121,7 @@ router.get('/templates/:id', verifyToken, async (req: Request, res: Response) =>
 });
 
 // POST /api/forms/submissions (Paciente: Enviar las respuestas de un formulario)
-router.post('/submissions', verifyToken, async (req: Request, res: Response) => {
+router.post('/submissions', verifyToken, async (req: express.Request, res: express.Response) => {
     const patientId = req.user?.id;
     const { templateId, answers } = req.body;
     let priority = null;
@@ -147,7 +149,7 @@ router.post('/submissions', verifyToken, async (req: Request, res: Response) => 
 });
 
 // GET /api/forms/my-submissions (Paciente: Obtener sus formularios enviados)
-router.get('/my-submissions', verifyToken, async (req: Request, res: Response) => {
+router.get('/my-submissions', verifyToken, async (req: express.Request, res: express.Response) => {
     const patientId = req.user?.id;
     try {
         const result = await pool.query(

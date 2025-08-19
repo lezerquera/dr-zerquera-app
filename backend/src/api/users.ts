@@ -1,3 +1,5 @@
+
+
 import express from 'express';
 import pool from '../db';
 import { verifyToken, isAdmin } from '../middleware/auth';
@@ -57,7 +59,8 @@ router.get('/patients/:id', verifyToken, isAdmin, async (req: express.Request, r
                 fs.submission_date AS "submissionDate", 
                 fs.answers, 
                 ft.title, 
-                ft.structure
+                ft.structure,
+                fs.priority
              FROM form_submissions fs
              JOIN form_templates ft ON fs.template_id = ft.id
              WHERE fs.patient_id = $1

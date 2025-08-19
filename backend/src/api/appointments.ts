@@ -1,4 +1,5 @@
-import express, { Request, Response } from 'express';
+
+import express from 'express';
 import pool from '../db';
 import { verifyToken, isAdmin } from '../middleware/auth';
 
@@ -21,7 +22,7 @@ const selectAppointmentQuery = `
 `;
 
 // GET /api/appointments (Admin only: gets all appointments)
-router.get('/', verifyToken, isAdmin, async (req: Request, res: Response) => {
+router.get('/', verifyToken, isAdmin, async (req: express.Request, res: express.Response) => {
     try {
         const result = await pool.query(`${selectAppointmentQuery} ORDER BY a.id DESC`);
         res.json(result.rows);
@@ -32,7 +33,7 @@ router.get('/', verifyToken, isAdmin, async (req: Request, res: Response) => {
 });
 
 // GET /api/appointments/my-appointments (Patient only: gets their own appointments)
-router.get('/my-appointments', verifyToken, async (req: Request, res: Response) => {
+router.get('/my-appointments', verifyToken, async (req: express.Request, res: express.Response) => {
     const patientId = req.user?.id;
     if (!patientId) {
         return res.status(403).json({ error: 'User ID not found in token' });
@@ -51,7 +52,7 @@ router.get('/my-appointments', verifyToken, async (req: Request, res: Response) 
 
 
 // POST /api/appointments (Public)
-router.post('/', verifyToken, async (req: Request, res: Response) => {
+router.post('/', verifyToken, async (req: express.Request, res: express.Response) => {
     const { patientName, patientPhone, patientEmail, serviceId, urgency, reason } = req.body;
     const patientId = req.user?.id;
     
@@ -80,7 +81,7 @@ router.post('/', verifyToken, async (req: Request, res: Response) => {
 });
 
 // PUT /api/appointments/:id/status -> Replaces the old /confirm endpoint
-router.put('/:id/status', verifyToken, isAdmin, async (req: Request, res: Response) => {
+router.put('/:id/status', verifyToken, isAdmin, async (req: express.Request, res: express.Response) => {
     const appointmentId = parseInt(req.params.id);
     const { status, date, time } = req.body; // Expecting status, date, and time
 

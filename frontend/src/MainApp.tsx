@@ -1,7 +1,8 @@
+
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Routes, Route, Link } from 'react-router-dom';
 import { DoctorProfile, Service, Appointment, ClinicInfo, ChatMessage, Notification, Insurance, User } from './types';
-import PatientView from './pages/PatientView';
+import { PatientView } from './pages/PatientView';
 import AdminView from './pages/AdminView';
 import { Logo, LogOutIcon } from './components/Icons';
 import { NotificationCenter } from './components/NotificationCenter';
@@ -118,6 +119,17 @@ const MainApp: React.FC<MainAppProps> = ({ user, token, onLogout }) => {
         }
     }, [isAdmin, fetchWithAuth]);
 
+    const fetchUnreadCount = useCallback(async () => {
+        if (!isAdmin) return;
+        try {
+            const res = await fetch(`${API_BASE_URL}/chat/unread-count`, { headers: authHeader });
+            const data = await res.json();
+            setUnreadChatCount(data.unreadCount);
+        } catch (error) {
+            console.error("Failed to fetch unread count", error);
+        }
+    }, [isAdmin, authHeader]);
+
     const fetchData = useCallback(async () => {
         try {
             const [
@@ -154,7 +166,7 @@ const MainApp: React.FC<MainAppProps> = ({ user, token, onLogout }) => {
         } finally {
             setIsLoading(false);
         }
-    }, [fetchWithAuth, isAdmin, fetchAppointments, fetchPatientChat]);
+    }, [fetchWithAuth, isAdmin, fetchAppointments, fetchPatientChat, fetchUnreadCount]);
     
     useEffect(() => {
         fetchData();
@@ -214,17 +226,7 @@ const MainApp: React.FC<MainAppProps> = ({ user, token, onLogout }) => {
         playNotificationSound();
     }, [playNotificationSound]);
 
-    const fetchUnreadCount = useCallback(async () => {
-        if (!isAdmin) return;
-        try {
-            const res = await fetch(`${API_BASE_URL}/chat/unread-count`, { headers: authHeader });
-            const data = await res.json();
-            setUnreadChatCount(data.unreadCount);
-        } catch (error) {
-            console.error("Failed to fetch unread count", error);
-        }
-    }, [isAdmin, authHeader]);
-
+    
     // Define API interaction functions
     const saveClinicInfo = useCallback(async (info: ClinicInfo) => {
         await fetchWithAuth(`${API_BASE_URL}/clinic-info`, { method: 'POST', body: JSON.stringify(info) });

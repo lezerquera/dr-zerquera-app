@@ -1,4 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
+
+
+import express from 'express';
 import jwt from 'jsonwebtoken';
 import type { User } from '../shared/types';
 
@@ -14,7 +16,7 @@ declare global {
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-default-secret-key-that-is-long-and-secure';
 
-export const verifyToken = (req: Request, res: Response, next: NextFunction) => {
+export const verifyToken = (req: express.Request, res: express.Response, next: express.NextFunction) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
@@ -31,7 +33,7 @@ export const verifyToken = (req: Request, res: Response, next: NextFunction) => 
     }
 };
 
-export const isAdmin = (req: Request, res: Response, next: NextFunction) => {
+export const isAdmin = (req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (req.user?.role !== 'admin') {
         return res.status(403).json({ error: 'Access denied, admin role required' });
     }

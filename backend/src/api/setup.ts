@@ -1,11 +1,13 @@
-import express, { Request, Response } from 'express';
+
+
+import express from 'express';
 import { initializeDatabase } from '../init-db';
 
 const router = express.Router();
 
 // This is a sensitive endpoint and should be protected in a real application
 // e.g. with an environment variable secret key check.
-router.post('/initialize', async (req: Request, res: Response) => {
+router.post('/initialize', async (req: express.Request, res: express.Response) => {
     try {
         console.log("Attempting to initialize database via API...");
         await initializeDatabase();

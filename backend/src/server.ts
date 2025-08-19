@@ -1,4 +1,5 @@
-import express, { Request, Response } from 'express';
+
+import express from 'express';
 import cors from 'cors';
 import { CorsOptions } from 'cors';
 import dotenv from 'dotenv';
@@ -18,7 +19,7 @@ import './middleware/auth';
 
 dotenv.config();
 
-const app = express();
+const app: express.Application = express();
 const port = process.env.PORT || 3001;
 
 // --- Configuración de CORS Explícita y Segura ---
@@ -37,7 +38,7 @@ if (process.env.FRONTEND_URL) {
 }
 
 const corsOptions: CorsOptions = {
-    origin: (origin, callback) => {
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
         // Permitir peticiones sin 'origin' (como las de Postman o apps móviles) o si el origen está en nuestra lista blanca.
         if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true);
@@ -67,11 +68,11 @@ app.use('/api/insurances', insurancesRouter);
 app.use('/api/forms', formsRouter); // Añadir la nueva ruta de formularios
 app.use('/api/setup', setupRouter); // Ruta de inicialización refactorizada
 
-app.get('/api', (req: Request, res: Response) => {
+app.get('/api', (req: express.Request, res: express.Response) => {
     res.send('ZIMI Backend API is running!');
 });
 
-app.get('/api/health', async (req: Request, res: Response) => {
+app.get('/api/health', async (req: express.Request, res: express.Response) => {
     try {
         await pool.query('SELECT 1');
         res.status(200).send('Backend and database connection are healthy.');
@@ -93,7 +94,7 @@ if (process.env.NODE_ENV === 'production') {
 
     // --- Catch-all para servir el index.html del frontend ---
     // Esto es crucial para que el enrutamiento del lado del cliente (React Router) funcione.
-    app.get('*', (req: Request, res: Response) => {
+    app.get('*', (req: express.Request, res: express.Response) => {
         const indexPath = path.join(frontendDistPath, 'index.html');
         res.sendFile(indexPath, (err) => {
             if (err) {
