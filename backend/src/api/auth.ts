@@ -1,6 +1,5 @@
 
-
-import express from 'express';
+import express, { Request, Response } from 'express';
 import * as bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
 import pool from '../db';
@@ -10,7 +9,7 @@ const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-default-secret-key-that-is-long-and-secure';
 
 // POST /api/auth/register
-router.post('/register', async (req: express.Request, res: express.Response) => {
+router.post('/register', async (req: Request, res: Response) => {
     const { email, password, name, insuranceId } = req.body;
 
     if (!email || !password || !name) {
@@ -25,9 +24,9 @@ router.post('/register', async (req: express.Request, res: express.Response) => 
         
         const passwordHash = await bcrypt.hash(password, 10);
 
-        // CORRECCIÓN: Manejar explícitamente la cadena vacía como NULL.
-        // Si `insuranceId` es una cadena vacía (''), se convertirá en `null`.
-        const finalInsuranceId = insuranceId ? insuranceId : null;
+        // FIX: Explicitly check for an empty string to ensure it's converted to null.
+        // This prevents foreign key violations when no insurance is selected.
+        const finalInsuranceId = (insuranceId && insuranceId !== '') ? insuranceId : null;
 
         const newUserResult = await pool.query(
             'INSERT INTO users (email, password_hash, role, name, insurance_id) VALUES ($1, $2, $3, $4, $5) RETURNING id, email, role, name',
@@ -47,7 +46,7 @@ router.post('/register', async (req: express.Request, res: express.Response) => 
 });
 
 // POST /api/auth/login
-router.post('/login', async (req: express.Request, res: express.Response) => {
+router.post('/login', async (req: Request, res: Response) => {
     const { email, password } = req.body;
 
     if (!email || !password) {

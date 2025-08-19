@@ -28,7 +28,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         throw new Error(data.error || 'Failed to login');
       }
       onLogin(data.token);
-      // navigate('/'); // Eliminado para permitir que App.tsx maneje la redirección por estado.
+      // La navegación es manejada por el componente App
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred.');
     } finally {
@@ -87,12 +87,14 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 </div>
             </form>
             
-            <p className="text-center text-sm text-muted dark:text-muted">
-                ¿No tienes una cuenta?{' '}
-                <Link to="/register" className="font-medium text-primary-light hover:text-primary dark:text-primary dark:hover:text-primary-light">
-                    Regístrate aquí
-                </Link>
-            </p>
+            <div className="text-center text-sm text-muted dark:text-muted space-y-2">
+                <p>
+                    ¿No tienes una cuenta?{' '}
+                    <Link to="/register" className="font-medium text-primary-light hover:text-primary dark:text-primary dark:hover:text-primary-light">
+                        Regístrate aquí
+                    </Link>
+                </p>
+            </div>
         </div>
     </div>
   );
