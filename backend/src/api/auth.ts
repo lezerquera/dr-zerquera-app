@@ -24,7 +24,7 @@ router.post('/register', async (req: express.Request, res: express.Response) => 
         
         const passwordHash = await bcrypt.hash(password, 10);
         
-        // Robustly handle optional insurance_id. If it's an empty string or null, pass NULL to the DB.
+        // FIX: Robustly handle optional insurance_id. If it's an empty string or null, pass NULL to the DB.
         const finalInsuranceId = insuranceId ? insuranceId : null;
 
         const newUserResult = await pool.query(
@@ -65,16 +65,21 @@ router.post('/login', async (req: express.Request, res: express.Response) => {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
         
-        const userPayload: User = { id: user.id, email: user.email, role: user.role, name: user.name };
-        const token = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '1d' });
+        const tokenPayload: User = {
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            name: user.name
+        };
+
+        const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '1d' });
 
         res.json({ token });
 
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error("Login Error:", err);
+        res.status(500).json({ error: 'Internal server error during login' });
     }
 });
-
 
 export { router as authRouter };

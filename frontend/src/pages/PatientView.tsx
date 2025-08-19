@@ -914,14 +914,57 @@ const StepReason = ({ answers, onChange }: { answers: NonNullable<ClinicalWizard
     );
 };
 
+const SPECIFIC_AREAS_MAP: Record<string, string[]> = {
+    'cabeza': ['Frente', 'Sien', 'Occipucio', 'Cara'],
+    'pecho': ['Esternón', 'Pecho Derecho', 'Pecho Izquierdo'],
+    'abdomen': ['Abdomen Superior', 'Abdomen Inferior', 'Ombligo'],
+    'espalda-superior': ['Trapecio', 'Dorsal', 'Omóplatos'],
+    'espalda-inferior': ['Zona Lumbar', 'Sacro'],
+    'brazo-superior-derecho': ['Hombro Derecho', 'Bícep Derecho', 'Trícep Derecho'],
+    'brazo-superior-izquierdo': ['Hombro Izquierdo', 'Bícep Izquierdo', 'Trícep Izquierdo'],
+    'antebrazo-derecho': ['Codo Derecho', 'Antebrazo Derecho', 'Muñeca Derecha'],
+    'antebrazo-izquierdo': ['Codo Izquierdo', 'Antebrazo Izquierdo', 'Muñeca Izquierda'],
+    'muslo-derecho': ['Cadera Derecha', 'Cuádriceps Derecho', 'Isquiotibial Derecho'],
+    'muslo-izquierdo': ['Cadera Izquierda', 'Cuádriceps Izquierdo', 'Isquiotibial Izquierdo'],
+    'pierna-inferior-derecha': ['Rodilla Derecha', 'Espinilla Derecha', 'Pantorrilla Derecha'],
+    'pierna-inferior-izquierda': ['Rodilla Izquierda', 'Espinilla Izquierda', 'Pantorrilla Izquierda'],
+};
+
+const SpecificityModal = ({ part, options, onSelect, onClose }: { part: string, options: string[], onSelect: (specificPart: string) => void, onClose: () => void }) => (
+    <Modal isOpen={true} onClose={onClose} title={`Seleccione una zona más específica para '${part.replace(/-/g, ' ')}'`}>
+        <div className="grid grid-cols-2 gap-3">
+            {options.map(option => (
+                <button
+                    key={option}
+                    onClick={() => onSelect(option)}
+                    className="p-3 text-center bg-accent-warm text-primary font-semibold rounded-lg hover:opacity-80 transition-opacity"
+                >
+                    {option}
+                </button>
+            ))}
+        </div>
+    </Modal>
+);
+
 const StepBodyMap = ({ answers, setAnswers }: { answers: ClinicalWizardAnswers, setAnswers: React.Dispatch<React.SetStateAction<ClinicalWizardAnswers>> }) => {
     const [view, setView] = useState<'front' | 'back'>('front');
     const [selectedBodyPart, setSelectedBodyPart] = useState<string | null>(null);
+    const [refiningPart, setRefiningPart] = useState<string | null>(null);
     const [painDetails, setPainDetails] = useState({ painType: '', intensity: 5, duration: '' });
 
     const handleBodyPartClick = (part: string) => {
+        if (SPECIFIC_AREAS_MAP[part]) {
+            setRefiningPart(part);
+        } else {
+            setPainDetails({ painType: '', intensity: 5, duration: '' });
+            setSelectedBodyPart(part);
+        }
+    };
+
+    const handleRefinedPartSelect = (specificPart: string) => {
+        setRefiningPart(null);
         setPainDetails({ painType: '', intensity: 5, duration: '' });
-        setSelectedBodyPart(part);
+        setSelectedBodyPart(specificPart);
     };
 
     const handleSavePainPoint = () => {
@@ -959,15 +1002,24 @@ const StepBodyMap = ({ answers, setAnswers }: { answers: ClinicalWizardAnswers, 
             </div>
             <div>
                 <h4 className="font-semibold mb-2">Puntos de Dolor Registrados</h4>
-                <ul className="space-y-2 mb-4 h-32 overflow-y-auto bg-bg-main dark:bg-surface-dark p-2 rounded-md">
+                <div className="space-y-2 mb-4 h-32 overflow-y-auto bg-bg-main dark:bg-surface-dark p-2 rounded-md border">
                     {answers.bodyMap?.map((point, index) => (
-                        <li key={index} className="flex justify-between items-center text-sm p-2 bg-accent-warm/50 rounded">
-                            <span>{point.bodyPart.replace(/-/g, ' ')} ({point.view}) - Intensidad: {point.intensity}/10</span>
+                        <div key={index} className="flex justify-between items-center text-sm p-2 bg-accent-warm/50 rounded">
+                            <span>{point.bodyPart} ({point.view}) - Int: {point.intensity}/10</span>
                             <button onClick={() => removePainPoint(index)}><TrashIcon className="w-4 h-4 text-red-500"/></button>
-                        </li>
+                        </div>
                     ))}
-                    {answers.bodyMap?.length === 0 && <p className="text-xs text-muted">Haga clic en una parte del cuerpo para añadir un punto de dolor.</p>}
-                </ul>
+                    {answers.bodyMap?.length === 0 && <p className="text-xs text-muted p-2">Haga clic en una parte del cuerpo para añadir un punto de dolor.</p>}
+                </div>
+                <p className="text-xs text-center text-muted">Haga clic en el cuerpo para registrar un punto de dolor.</p>
+                 {refiningPart && (
+                    <SpecificityModal
+                        part={refiningPart}
+                        options={SPECIFIC_AREAS_MAP[refiningPart]}
+                        onSelect={handleRefinedPartSelect}
+                        onClose={() => setRefiningPart(null)}
+                    />
+                 )}
                  {selectedBodyPart && (
                     <Modal isOpen={!!selectedBodyPart} onClose={() => setSelectedBodyPart(null)} title={`Detalles del Dolor en ${selectedBodyPart.replace(/-/g, ' ')}`}>
                         <div className="space-y-4">
@@ -1063,7 +1115,7 @@ const StepSummary = ({ answers, goToStep }: { answers: ClinicalWizardAnswers, go
              </SummarySection>
              <SummarySection title="Mapa de Dolor" step={4} onEdit={goToStep}>
                  {answers.bodyMap && answers.bodyMap.length > 0 ? (
-                    answers.bodyMap.map((p, i) => <p key={i}>- {p.bodyPart.replace(/-/g, ' ')} ({p.view}): Intensidad {p.intensity}/10, {p.painType}</p>)
+                    answers.bodyMap.map((p, i) => <p key={i}>- {p.bodyPart}: Intensidad {p.intensity}/10, {p.painType}</p>)
                  ) : <p>No se registraron puntos de dolor.</p>}
              </SummarySection>
              <SummarySection title="Principios MTC" step={5} onEdit={goToStep}>
@@ -1080,63 +1132,86 @@ const StepSummary = ({ answers, goToStep }: { answers: ClinicalWizardAnswers, go
 // --- BODY MAP SVG COMPONENTS ---
 
 const BodyMapFront = ({ onClick, selectedParts }: { onClick: (part: string) => void; selectedParts: string[] }) => {
-    const BodyPart = ({ id, d }: { id: string; d: string }) => (
-        <path
-            id={id}
-            d={d}
-            className={`cursor-pointer transition-colors duration-200 ${selectedParts.includes(id) ? 'fill-accent-red/80' : 'fill-gray-300 dark:fill-gray-600 hover:fill-primary/50'}`}
-            onClick={() => onClick(id)}
-        />
-    );
+    const BodyPart = ({ id, d, title }: { id: string; d: string; title?: string }) => {
+        const isSelected = selectedParts.some(partName => partName.toLowerCase().includes(id.replace(/-/g, ' ')));
+        return (
+            <path
+                id={id}
+                d={d}
+                className={`cursor-pointer transition-colors duration-200 ${isSelected ? 'fill-accent-red/80' : 'fill-gray-300 dark:fill-gray-600 hover:fill-primary/50'}`}
+                onClick={() => onClick(id)}
+            >
+                {title ? <title>{title}</title> : null}
+            </path>
+        );
+    }
     return (
-        <svg viewBox="0 0 250 500" xmlns="http://www.w3.org/2000/svg" className="w-full max-w-xs mx-auto">
-            {/* Simplified SVG paths for body parts */}
+        <svg viewBox="0 0 300 600" xmlns="http://www.w3.org/2000/svg" className="w-full max-w-[250px] mx-auto">
             <g id="body-front">
-                <BodyPart id="cabeza" d="M103 10c14 0 26 12 26 26s-12 26-26 26-26-12-26-26 12-26 26-26z"/>
-                <BodyPart id="cuello" d="M103 62h44v20H103z"/>
-                <BodyPart id="hombro-derecho" d="M147 82l30 10v30l-30-10z"/>
-                <BodyPart id="hombro-izquierdo" d="M73 82l-30 10v30l30-10z"/>
-                <BodyPart id="pecho" d="M73 122h104v60H73z"/>
-                <BodyPart id="abdomen" d="M73 182h104v70H73z"/>
-                <BodyPart id="brazo-derecho" d="M177 92 l15 60 v50 l-15-60z"/>
-                <BodyPart id="brazo-izquierdo" d="M58 92 l-15 60 v50 l15-60z"/>
-                <BodyPart id="mano-derecha" d="M192 202 l10 20 v20 l-10-20z"/>
-                <BodyPart id="mano-izquierda" d="M48 202 l-10 20 v20 l10-20z"/>
-                <BodyPart id="pierna-derecha" d="M127 252 l10 100 v80 l-10-100z"/>
-                <BodyPart id="pierna-izquierda" d="M113 252 l-10 100 v80 l10-100z"/>
-                <BodyPart id="pie-derecho" d="M137 432 l15 20 h-20z"/>
-                <BodyPart id="pie-izquierdo" d="M98 432 l-15 20 h20z"/>
+                <BodyPart id="cabeza" title="Cabeza" d="M150,52c-20.5,0-37-16.5-37-37s16.5-37,37-37,37,16.5,37,37-16.5,37-37,37Z" />
+                <BodyPart id="cuello" title="Cuello" d="M132,70c0,14,3,22,18,22s18-8,18-22c0-6-36-6-36,0Z" />
+                <BodyPart id="hombro-izquierdo" title="Hombro izquierdo" d="M92,100c-14,0-26-10-28-24l-.6-4.2c-1.5-10.2,7.7-19,18-17.1,13.6,2.3,24.6,19.3,28.6,36.3,1.7,7-7,9-18,9Z" />
+                <BodyPart id="hombro-derecho" title="Hombro derecho" d="M208,100c14,0,26-10,28-24l.6-4.2c1.5-10.2-7.7-19-18-17.1-13.6,2.3-24.6,19.3-28.6,36.3-1.7,7,7,9,18,9Z" />
+                <BodyPart id="pecho" title="Pecho" d="M110,100c-9,0-16,7.3-16,16.3,0,13.1,2.6,25.4,6.4,34.7,5.6,13.8,16.3,19,49.6,19s44-5.2,49.6-19c3.8-9.3,6.4-21.6,6.4-34.7,0-9-7-16.3-16-16.3H110Z" />
+                <BodyPart id="abdomen" title="Abdomen" d="M118,170c-6.5,0-12,5.2-11.7,11.7,.6,12.5,2.8,27.2,7.7,39.3,6.9,17.3,19.5,23.7,35.9,23.7s29-6.4,35.9-23.7c4.9-12.1,7.1-26.8,7.7-39.3,.3-6.5-5.2-11.7-11.7-11.7H118Z" />
+                <BodyPart id="pelvis" title="Pelvis" d="M120,244c-10,0-16,9-13,18,6,18,19,30,43,30s37-12,43-30c3-9-3-18-13-18h-60Z" />
+                <BodyPart id="brazo-superior-izquierdo" title="Brazo superior izquierdo" d="M84,108c-9,0-16,7.3-15.5,16.3,1,22.8,4.7,63.7,7.5,83.7,1.3,9.2,9,15.9,18.3,15.9,5.2,0,9.3-4.1,9.1-9.3l-2.4-73.6c-.4-12.7-6.4-32.9-17-32.9Z" />
+                <BodyPart id="brazo-superior-derecho" title="Brazo superior derecho" d="M216,108c9,0,16,7.3,15.5,16.3-1,22.8-4.7,63.7-7.5,83.7-1.3,9.2-9,15.9-18.3,15.9-5.2,0-9.3-4.1-9.1-9.3l2.4-73.6c.4-12.7,6.4-32.9,17-32.9Z" />
+                <BodyPart id="antebrazo-izquierdo" title="Antebrazo izquierdo" d="M75,206c-6.5,0-11.6,5.7-10.6,12.1,2.3,15.1,6.3,36.1,8.5,47.9,1.6,8.6,8.9,14.7,17.6,14.7,5,0,9-4.2,8.7-9.2l-2.1-43.5c-.5-9.7-8.1-21.9-22.1-21.9Z" />
+                <BodyPart id="antebrazo-derecho" title="Antebrazo derecho" d="M225,206c6.5,0,11.6,5.7,10.6,12.1-2.3,15.1-6.3,36.1-8.5,47.9-1.6,8.6-8.9,14.7-17.6,14.7-5,0-9-4.2-8.7-9.2l2.1-43.5c.5-9.7,8.1-21.9,22.1-21.9Z" />
+                <BodyPart id="mano-izquierda" title="Mano izquierda" d="M86,279c-9,0-16,7.3-16,16.3,0,7.4,3.1,14.5,8.5,19.5,4.3,4,9.8,6.2,15.6,6.2,4.9,0,8.9-4,8.9-8.9,0-16.3-4.2-33.1-17-33.1Z" />
+                <BodyPart id="mano-derecha" title="Mano derecha" d="M214,279c9,0,16,7.3,16,16.3,0,7.4-3.1,14.5-8.5,19.5-4.3,4-9.8,6.2-15.6,6.2-4.9,0-8.9-4-8.9-8.9,0-16.3,4.2-33.1,17-33.1Z" />
+                <BodyPart id="muslo-izquierdo" title="Muslo izquierdo" d="M128,290c-11,0-20,8.9-20,19.9,0,21.9,1.9,59.9,4.2,78.9,1.3,10.6,9.8,18.6,20.5,18.6,6,0,10.8-4.8,10.8-10.8V306c0-8.8-6.2-16-15.5-16Z" />
+                <BodyPart id="muslo-derecho" title="Muslo derecho" d="M172,290c11,0,20,8.9,20,19.9,0,21.9-1.9,59.9-4.2,78.9-1.3,10.6-9.8,18.6-20.5,18.6-6,0-10.8-4.8-10.8-10.8V306c0-8.8,6.2-16,15.5-16Z" />
+                <BodyPart id="rodilla-izquierda" title="Rodilla izquierda" d="M132,390c-8,0-14.5,6.5-14.5,14.5s6.5,14.5,14.5,14.5,14.5-6.5,14.5-14.5-6.5-14.5-14.5-14.5Z" />
+                <BodyPart id="rodilla-derecha" title="Rodilla derecha" d="M168,390c8,0,14.5,6.5,14.5,14.5s-6.5,14.5-14.5,14.5-14.5-6.5-14.5-14.5,6.5-14.5,14.5-14.5Z" />
+                <BodyPart id="pierna-inferior-izquierda" title="Pierna inferior izquierda" d="M130,417c-9.5,0-17,7.7-16.6,17.2,.7,17.6,2.8,45.8,4.8,59.8,1.3,9.1,9.1,15.9,18.3,15.9,5.7,0,10.3-4.6,10.3-10.3v-65.9c0-8.9-7.2-16.7-16.8-16.7Z" />
+                <BodyPart id="pierna-inferior-derecha" title="Pierna inferior derecha" d="M170,417c9.5,0,17,7.7,16.6,17.2-.7,17.6-2.8,45.8-4.8,59.8-1.3,9.1-9.1,15.9-18.3,15.9-5.7,0-10.3-4.6-10.3-10.3v-65.9c0-8.9,7.2-16.7,16.8-16.7Z" />
+                <BodyPart id="pie-izquierdo" title="Pie izquierdo" d="M126,510c-10,0-18,8-18,18,0,8,6,14,14,15l22,3c6,.8,11-4,11-10v-8c0-4.4-3.6-8-8-8h-21Z" />
+                <BodyPart id="pie-derecho" title="Pie derecho" d="M174,510c10,0,18,8,18,18,0,8-6,14-14,15l-22,3c-6,.8-11-4-11-10v-8c0-4.4,3.6-8,8-8h21Z" />
             </g>
         </svg>
     );
 };
 
+
 const BodyMapBack = ({ onClick, selectedParts }: { onClick: (part: string) => void; selectedParts: string[] }) => {
-    const BodyPart = ({ id, d }: { id: string; d: string }) => (
-        <path
-            id={id}
-            d={d}
-            className={`cursor-pointer transition-colors duration-200 ${selectedParts.includes(id) ? 'fill-accent-red/80' : 'fill-gray-300 dark:fill-gray-600 hover:fill-primary/50'}`}
-            onClick={() => onClick(id)}
-        />
-    );
+    const BodyPart = ({ id, d, title }: { id: string; d: string; title?: string }) => {
+        const isSelected = selectedParts.some(partName => partName.toLowerCase().includes(id.replace(/-/g, ' ')));
+        return (
+            <path
+                id={id}
+                d={d}
+                className={`cursor-pointer transition-colors duration-200 ${isSelected ? 'fill-accent-red/80' : 'fill-gray-300 dark:fill-gray-600 hover:fill-primary/50'}`}
+                onClick={() => onClick(id)}
+            >
+                {title ? <title>{title}</title> : null}
+            </path>
+        );
+    }
     return (
-        <svg viewBox="0 0 250 500" xmlns="http://www.w3.org/2000/svg" className="w-full max-w-xs mx-auto">
+        <svg viewBox="0 0 300 600" xmlns="http://www.w3.org/2000/svg" className="w-full max-w-[250px] mx-auto">
             <g id="body-back">
-                <BodyPart id="nuca" d="M103 10c14 0 26 12 26 26s-12 26-26 26-26-12-26-26 12-26 26-26z"/>
-                <BodyPart id="espalda-superior" d="M73 82h104v70H73z"/>
-                <BodyPart id="lumbar" d="M73 152h104v70H73z"/>
-                <BodyPart id="gluteos" d="M73 222h104v50H73z"/>
-                <BodyPart id="posterior-brazo-derecho" d="M177 92 l15 60 v50 l-15-60z"/>
-                <BodyPart id="posterior-brazo-izquierdo" d="M58 92 l-15 60 v50 l15-60z"/>
-                <BodyPart id="posterior-pierna-derecha" d="M127 272 l10 100 v80 l-10-100z"/>
-                <BodyPart id="posterior-pierna-izquierda" d="M113 272 l-10 100 v80 l10-100z"/>
-                <BodyPart id="talon-derecho" d="M137 452 l15 20 h-20z"/>
-                <BodyPart id="talon-izquierdo" d="M98 452 l-15 20 h20z"/>
+                <BodyPart id="cabeza" title="Cabeza (posterior)" d="M150,52c-20.5,0-37-16.5-37-37s16.5-37,37-37,37,16.5,37,37-16.5,37-37,37Z" />
+                <BodyPart id="cuello" title="Cuello (posterior)" d="M132,70c0,14,3,22,18,22s18-8,18-22c0-6-36-6-36,0Z" />
+                <BodyPart id="espalda-superior" title="Espalda superior" d="M108,100c-10,0-17,8.2-15.6,18,1.9,12.8,5.6,25.4,9.8,33.9,7.2,14.3,17.9,18.8,47.8,18.8s40.6-4.5,47.8-18.8c4.2-8.5,7.9-21.1,9.8-33.9,1.4-9.8-5.6-18-15.6-18H108Z" />
+                <BodyPart id="espalda-inferior" title="Espalda inferior" d="M118,170c-7,0-12.7,5.7-12.5,12.7,.3,11.6,2.3,24.5,6.9,35.3,7.5,17.5,19.1,25,37.6,25s30.1-7.5,37.6-25c4.6-10.8,6.6-23.7,6.9-35.3,.2-7-5.5-12.7-12.5-12.7H118Z" />
+                <BodyPart id="gluteos" title="Glúteos" d="M120,244c-10,0-16,9-13,18,6,18,19,32,43,32s37-14,43-32c3-9-3-18-13-18h-60Z" />
+                <BodyPart id="deltoide-izquierdo" title="Deltoide izquierdo" d="M90,108c-9,0-15.8,7.4-15.4,16.2,.8,18.8,4.7,38.8,7.4,49,2.3,8.9,9.1,15,18.3,15,5,0,9.1-4.1,8.9-9.1l-2.2-56.3c-.4-10.8-6.2-14.8-17-14.8Z" />
+                <BodyPart id="deltoide-derecho" title="Deltoide derecho" d="M210,108c9,0,15.8,7.4,15.4,16.2-.8,18.8-4.7,38.8-7.4,49-2.3,8.9-9.1,15-18.3,15-5,0-9.1-4.1-8.9-9.1l2.2-56.3c.4-10.8,6.2-14.8,17-14.8Z" />
+                <BodyPart id="brazo-superior-post-izquierdo" title="Brazo superior posterior izq." d="M80,170c-6.8,0-12.1,6-11.1,12.7,2.2,14.4,6.2,33.8,8.4,44.4,1.7,8.2,8.8,13.9,17.1,13.9,4.8,0,8.7-3.9,8.5-8.7l-2-43.6c-.6-10.4-8-18.7-20.9-18.7Z" />
+                <BodyPart id="brazo-superior-post-derecho" title="Brazo superior posterior der." d="M220,170c6.8,0,12.1,6,11.1,12.7-2.2,14.4-6.2,33.8-8.4,44.4-1.7,8.2-8.8,13.9-17.1,13.9-4.8,0-8.7-3.9-8.5-8.7l2-43.6c.6-10.4,8-18.7,20.9-18.7Z" />
+                <BodyPart id="isquiotibiales-izquierdo" title="Muslo posterior izquierdo" d="M128,290c-11,0-20,8.9-20,19.9,0,22.5,2.1,61.2,4.5,80.8,1.4,10.7,9.9,18.7,20.6,18.7,6.1,0,10.9-4.8,10.9-10.9v-77.6c0-8.8-6.2-30.9-16-30.9Z" />
+                <BodyPart id="isquiotibiales-derecho" title="Muslo posterior derecho" d="M172,290c11,0,20,8.9,20,19.9,0,22.5-2.1,61.2-4.5,80.8-1.4,10.7-9.9,18.7-20.6,18.7-6.1,0-10.9-4.8-10.9-10.9v-77.6c0-8.8,6.2-30.9,16-30.9Z" />
+                <BodyPart id="pantorrilla-izquierda" title="Pantorrilla izquierda" d="M130,418c-9.3,0-16.7,7.6-16.4,16.9,.7,17.1,2.7,44.6,4.6,58.1,1.3,8.8,8.8,15.3,17.7,15.3,5.6,0,10.1-4.5,10.1-10.1v-63.5c0-9.1-6.9-16.7-16-16.7Z" />
+                <BodyPart id="pantorrilla-derecha" title="Pantorrilla derecha" d="M170,418c9.3,0,16.7,7.6,16.4,16.9-.7,17.1-2.7,44.6-4.6,58.1-1.3,8.8-8.8,15.3-17.7,15.3-5.6,0-10.1-4.5-10.1-10.1v-63.5c0-9.1,6.9-16.7,16-16.7Z" />
+                <BodyPart id="talon-izquierdo" title="Talón izquierdo" d="M128,514c-7.6,0-13.8,6.2-13.8,13.8,0,6.4,4.6,11.9,10.9,13.1l19.6,3.8c5,.9,9.4-2.9,9.4-8,0-10.5-8.5-22.7-26.1-22.7Z" />
+                <BodyPart id="talon-derecho" title="Talón derecho" d="M172,514c7.6,0,13.8,6.2,13.8,13.8,0,6.4-4.6,11.9-10.9,13.1l-19.6,3.8c-5,.9-9.4-2.9-9.4-8,0-10.5,8.5-22.7,26.1-22.7Z" />
             </g>
         </svg>
     );
 };
+
 
 // --- END OF FORMS SECTION ---
 
