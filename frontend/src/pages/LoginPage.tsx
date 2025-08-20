@@ -28,7 +28,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         throw new Error(data.error || 'Failed to login');
       }
       onLogin(data.token);
-      // La navegación es manejada por el componente App
+      navigate('/', { replace: true }); // Redirige al panel principal
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred.');
     } finally {
@@ -92,6 +92,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                     ¿No tienes una cuenta?{' '}
                     <Link to="/register" className="font-medium text-primary-light hover:text-primary dark:text-primary dark:hover:text-primary-light">
                         Regístrate aquí
+                    </Link>
+                </p>
+                <p>
+                    ¿Buscas información?{' '}
+                    <Link to="/atlas" className="font-medium text-primary-light hover:text-primary dark:text-primary dark:hover:text-primary-light">
+                        Explora el Atlas de Acupuntura
                     </Link>
                 </p>
             </div>

@@ -52,7 +52,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
       }
       
       onRegister(data.token);
-      // navigate('/'); // Eliminado para permitir que App.tsx maneje la redirección por estado.
+      navigate('/', { replace: true }); // Redirige al panel principal
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred.');
