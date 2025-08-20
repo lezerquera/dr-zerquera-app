@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { NavLink, Route, Routes, Link, useLocation, useParams, useNavigate } from 'react-router-dom';
-import type { DoctorProfile, Service, Appointment, ChatMessage, ClinicInfo, Insurance, User, FormTemplate, PatientFormSubmission, Question, ClinicalWizardAnswers, BodyPainPoint, QuestionType } from '../types';
+import type { DoctorProfile, Service, Appointment, ChatMessage, ClinicInfo, Insurance, User, FormTemplate, PatientFormSubmission, Question, QuestionType, ClinicalWizardAnswers, BodyPainPoint } from '../types';
 import { 
     CalendarIcon, UsersIcon, StethoscopeIcon, MessageSquareIcon, ClipboardIcon, SparklesIcon, SendIcon, 
     CheckCircleIcon, TargetIcon, RefreshCwIcon, ClockIcon, ShieldIcon, MapPinIcon, PhoneIcon,
@@ -11,6 +12,7 @@ import { PageWrapper } from '../components/PageWrapper';
 import { Modal } from '../components/Modal';
 import { generateChatSummary } from '../services/geminiService';
 import { InsuranceCarousel } from '../components/InsuranceCarousel';
+import jsPDF from 'jspdf';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -60,15 +62,18 @@ const PatientNavLink = ({ to, icon, label }: { to: string; icon: React.ReactNode
     const baseClasses = 'flex items-center p-3 text-sm font-medium rounded-md transition-colors duration-200';
     const activeClasses = 'bg-accent-warm text-primary font-semibold';
     const inactiveClasses = 'text-muted dark:text-muted hover:text-main dark:hover:text-main hover:bg-accent-warm/30 dark:hover:bg-primary/10';
+    const location = useLocation();
+    
+    // Check if the current path exactly matches the `to` prop.
+    // For the dashboard (to=""), we check if the path is exactly the base patient path.
+    // The patient base path in MainApp is `/`.
+    // We use `end` prop in NavLink to ensure this matching behavior.
+    const isActive = location.pathname === (to === '' ? '/' : `/${to}`);
 
     return (
-        <NavLink to={to} end={to === ''}>
-            {({ isActive }) => (
-                <div className={`${baseClasses} ${isActive ? activeClasses : inactiveClasses}`}>
-                    {icon}
-                    <span className="ml-3">{label}</span>
-                </div>
-            )}
+        <NavLink to={to} end className={`${baseClasses} ${location.pathname.startsWith('/' + to) && to !== '' ? activeClasses : (to === '' && location.pathname === '/' ? activeClasses : inactiveClasses)}`}>
+            {icon}
+            <span className="ml-3">{label}</span>
         </NavLink>
     );
 };
@@ -733,484 +738,540 @@ const GenericFormFiller = ({ template, token, onSubmitSuccess }: { template: For
     );
 };
 
+// --- START OF CLINICAL WIZARD (NEW VERSION) ---
 
-// --- START OF CLINICAL WIZARD ---
+// Types
+type Sex = 'male' | 'female';
+
+type PainFinding = {
+  region: RegionKey;
+  side: 'izquierdo' | 'derecho' | 'ambos' | 'medio';
+  quality: 'punzante' | 'quemante' | 'presion' | 'intermitente' | 'ardor' | 'calambre';
+  intensity: number; // 0..10
+  factors?: string[]; // ej: movimiento, reposo, frío, calor
+};
+
+type RegionKey =
+  | 'cabeza' | 'cuello'
+  | 'hombro_izq' | 'hombro_der'
+  | 'brazo_sup_izq' | 'brazo_sup_der'
+  | 'codo_izq' | 'codo_der'
+  | 'antebrazo_izq' | 'antebrazo_der'
+  | 'mano_izq' | 'mano_der'
+  | 'pecho' | 'mama_izq' | 'mama_der'
+  | 'abdomen' | 'pelvis'
+  | 'muslo_izq' | 'muslo_der'
+  | 'rodilla_izq' | 'rodilla_der'
+  | 'pierna_izq' | 'pierna_der'
+  | 'pie_izq' | 'pie_der';
+
 const wizardSteps = [
-    { number: 1, title: "Bienvenida" },
-    { number: 2, title: "Datos Generales" },
-    { number: 3, title: "Motivo de Consulta" },
-    { number: 4, title: "Mapa Corporal del Dolor" },
-    { number: 5, title: "Principios MTC" },
-    { number: 6, title: "Evaluación de Lengua" },
-    { number: 7, title: "Resumen y Envío" },
+  { number: 1, title: 'Bienvenida' },
+  { number: 2, title: 'Datos Generales' },
+  { number: 3, title: 'Motivo de Consulta' },
+  { number: 4, title: 'Mapa de Dolor (Híbrido)' },
+  { number: 5, title: 'Principios MTC' },
+  { number: 6, title: 'Evaluación de Lengua' },
+  { number: 7, title: 'Resumen y Envío' },
 ];
 
 const ClinicalWizard = ({ template, user, token, onSubmitSuccess }: { template: FormTemplate, user: User, token: string, onSubmitSuccess: () => void }) => {
-    const [step, setStep] = useState(1);
-    const [answers, setAnswers] = useState<ClinicalWizardAnswers>({
-        generalData: { fullName: user.name, age: '', gender: '', occupation: '', contact: '' },
-        consultationReason: { reason: '', duration: '' },
-        bodyMap: [],
-        mtc: { coldHeat: 'Frío', dayNight: 'Día', fullEmpty: 'Plenitud', onset: 'Agudo' },
-        tongue: []
-    });
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    
-    const totalSteps = wizardSteps.length;
+  const [step, setStep] = useState(1);
+  const [answers, setAnswers] = useState<any>({
+    generalData: {
+      fullName: user?.name || '', age: '', gender: '', occupation: '', contact: '',
+      antecedentes: '', familiares: '', habitos: '', alergias: '', medicacion: ''
+    },
+    consultationReason: { reason: '', duration: '', severity: 5, expectations: '', associated: [] as string[] },
+    painFindings: [] as PainFinding[],
+    mtc: { apetito: '', sueno: '', emociones: '', sudor: '', sed: '' },
+    tongue: [] as string[],
+    sex: 'female' as Sex,
+  });
 
-    const handleNext = () => setStep(prev => Math.min(prev + 1, totalSteps));
-    const handleBack = () => setStep(prev => Math.max(prev - 1, 1));
-    const goToStep = (stepNumber: number) => setStep(stepNumber);
+  const totalSteps = wizardSteps.length;
+  const handleNext = () => setStep((p) => Math.min(p + 1, totalSteps));
+  const handleBack = () => setStep((p) => Math.max(p - 1, 1));
+  
+  const updateSection = (section: string, field: string, value: any) => {
+    setAnswers((prev: any) => ({ ...prev, [section]: { ...prev[section], [field]: value } }));
+  };
 
-    const handleAnswerChange = (section: keyof ClinicalWizardAnswers, field: string, value: any) => {
-        setAnswers(prev => ({
-            ...prev,
-            [section]: {
-                ...(prev[section] as object),
-                [field]: value,
-            },
-        }));
-    };
-    
-    const handleMTCChange = (field: keyof NonNullable<ClinicalWizardAnswers['mtc']>, value: string) => {
-         setAnswers(prev => ({ ...prev, mtc: { ...(prev.mtc!), [field]: value } }));
+  const exportPDF = () => {
+    const doc = new jsPDF();
+    doc.text('Resumen Consulta Inicial', 10, 10);
+    doc.setFontSize(10);
+    const safe = JSON.parse(JSON.stringify(answers));
+    doc.text(JSON.stringify(safe, null, 2), 10, 20);
+    doc.save('consulta_inicial.pdf');
+  };
+
+  const submit = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/forms/submissions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ templateId: template.id, answers }),
+      });
+      if (!res.ok) throw new Error('Error al enviar');
+      alert('Formulario enviado con éxito');
+      onSubmitSuccess?.();
+    } catch (e) {
+      console.error(e);
+      alert('Error al enviar formulario');
     }
-    
-    const handleTongueChange = (value: string) => {
-        setAnswers(prev => {
-            const currentTongue = prev.tongue || [];
-            const newTongue = currentTongue.includes(value)
-                ? currentTongue.filter(item => item !== value)
-                : [...currentTongue, value];
-            return { ...prev, tongue: newTongue };
-        });
-    }
+  };
 
-    const handleSubmit = async () => {
-        setIsSubmitting(true);
-        try {
-            const response = await fetch(`${API_BASE_URL}/forms/submissions`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ templateId: template.id, answers }),
-            });
-            if (!response.ok) throw new Error('Failed to submit form');
-            alert('Formulario enviado con éxito!');
-            onSubmitSuccess();
-        } catch (error) {
-            console.error(error);
-            alert('Hubo un error al enviar el formulario.');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    const renderStepContent = () => {
-        switch (step) {
-            case 1: return <StepWelcome onNext={handleNext} description={template.description} />;
-            case 2: return <StepGeneralData answers={answers.generalData!} onChange={handleAnswerChange} />;
-            case 3: return <StepReason answers={answers.consultationReason!} onChange={handleAnswerChange} />;
-            case 4: return <StepBodyMap answers={answers} setAnswers={setAnswers} />;
-            case 5: return <StepMTC answers={answers.mtc!} onChange={handleMTCChange} />;
-            case 6: return <StepTongue answers={answers.tongue!} onChange={handleTongueChange} />;
-            case 7: return <StepSummary answers={answers} goToStep={goToStep} />;
-            default: return null;
-        }
-    };
-
-    return (
-        <PageWrapper title={template.title}>
-            <div className="bg-bg-alt dark:bg-bg-alt/50 p-4 sm:p-8 rounded-xl shadow-lg">
-                <WizardProgress currentStep={step} totalSteps={totalSteps} />
-                <div className="mt-8 min-h-[300px]">
-                    {renderStepContent()}
-                </div>
-                <div className="mt-8 pt-6 border-t border-border-main dark:border-border-dark flex justify-between items-center">
-                    <button onClick={handleBack} disabled={step === 1} className="btn-secondary disabled:opacity-50">
-                        <ChevronLeftIcon className="w-4 h-4 mr-1 inline"/> Anterior
-                    </button>
-                    {step < totalSteps ? (
-                         <button onClick={handleNext} className="btn-primary">
-                            Siguiente <ChevronRightIcon className="w-4 h-4 ml-1 inline"/>
-                        </button>
-                    ) : (
-                         <button onClick={handleSubmit} disabled={isSubmitting} className="btn-primary bg-accent-turquoise text-white">
-                            {isSubmitting ? 'Enviando...' : 'Finalizar y Enviar'}
-                        </button>
-                    )}
-                </div>
+  return (
+    <PageWrapper title={template.title}>
+        <div className="max-w-5xl mx-auto">
+            <WizardProgress currentStep={step} totalSteps={totalSteps} />
+            <div className="mt-6 min-h-[400px]">
+                {step === 1 && (
+                <StepWelcome onNext={handleNext} description={template?.description} onSexChange={(sex)=>setAnswers((p:any)=>({...p, sex}))} sex={answers.sex} />
+                )}
+                {step === 2 && (
+                <StepGeneralData answers={answers.generalData} onChange={updateSection} />
+                )}
+                {step === 3 && (
+                <StepReason answers={answers.consultationReason} onChange={updateSection} />
+                )}
+                {step === 4 && (
+                <StepBodyMapHybrid
+                    sex={answers.sex}
+                    findings={answers.painFindings}
+                    onAdd={(f)=>setAnswers((p:any)=>({...p, painFindings:[...p.painFindings, f]}))}
+                    onRemoveIndex={(i)=>setAnswers((p:any)=>({...p, painFindings:p.painFindings.filter((_:any,idx:number)=>idx!==i)}))}
+                />
+                )}
+                {step === 5 && (
+                <StepMTC answers={answers.mtc} onChange={updateSection} />
+                )}
+                {step === 6 && (
+                <StepTongue answers={answers.tongue} onToggle={(val)=>setAnswers((p:any)=>({...p, tongue: p.tongue.includes(val)? p.tongue.filter((x:string)=>x!==val): [...p.tongue, val]}))} />
+                )}
+                {step === 7 && (
+                <StepSummary answers={answers} onExport={exportPDF} />
+                )}
             </div>
-            <style>{`
-                .btn-primary { padding: 10px 20px; font-weight: 600; color: #FFFFFF; background-color: #083C70; border-radius: 8px; transition: opacity 0.2s; }
-                .btn-primary:hover { opacity: 0.9; }
-                .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-                .btn-secondary { padding: 10px 20px; font-weight: 600; background-color: #e5e7eb; border-radius: 8px; }
-                .dark .btn-secondary { background-color: #4b5563; color: #E6F1FF; }
-            `}</style>
-        </PageWrapper>
-    );
-};
-
-const WizardProgress = ({ currentStep, totalSteps }: { currentStep: number, totalSteps: number }) => (
-    <div>
-        <p className="text-sm font-semibold text-accent-turquoise dark:text-primary mb-2">PASO {currentStep} DE {totalSteps}</p>
-        <div className="bg-border-main dark:bg-border-dark rounded-full h-2.5">
-            <div className="bg-primary h-2.5 rounded-full" style={{ width: `${(currentStep / totalSteps) * 100}%`, transition: 'width 0.3s ease-in-out' }}></div>
-        </div>
-        <h3 className="text-xl font-bold mt-2 text-main dark:text-main">{wizardSteps.find(s => s.number === currentStep)?.title}</h3>
-    </div>
-);
-
-const WizardInput = ({ name, label, value, onChange, placeholder, type = "text" }: { name: string, label: string, value: string, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, placeholder?: string, type?: string }) => (
-    <div>
-        <label htmlFor={name} className="block text-sm font-medium text-main dark:text-main mb-1">{label}</label>
-        <input type={type} id={name} name={name} value={value} onChange={onChange} placeholder={placeholder} className="w-full p-2 border border-border-main dark:border-border-dark rounded-md bg-bg-main dark:bg-surface-dark" />
-    </div>
-);
-
-const WizardTextarea = ({ name, label, value, onChange, placeholder }: { name: string, label: string, value: string, onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void, placeholder?: string }) => (
-    <div>
-        <label htmlFor={name} className="block text-sm font-medium text-main dark:text-main mb-1">{label}</label>
-        <textarea id={name} name={name} value={value} onChange={onChange} rows={4} placeholder={placeholder} className="w-full p-2 border border-border-main dark:border-border-dark rounded-md bg-bg-main dark:bg-surface-dark" />
-    </div>
-);
-
-const StepWelcome = ({ onNext, description }: { onNext: () => void, description: string }) => (
-    <div className="text-center">
-        <SparklesIcon className="w-16 h-16 text-primary mx-auto mb-4" />
-        <p className="text-lg text-muted dark:text-main/80 max-w-2xl mx-auto">{description}</p>
-        <button onClick={onNext} className="mt-8 btn-primary">Comenzar</button>
-    </div>
-);
-
-const StepGeneralData = ({ answers, onChange }: { answers: NonNullable<ClinicalWizardAnswers['generalData']>, onChange: Function }) => {
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => onChange('generalData', e.target.name, e.target.value);
-    return (
-        <div className="max-w-xl mx-auto space-y-4">
-            <p className="text-sm text-muted dark:text-main/80 mb-4">Por favor, confirma o completa tus datos personales.</p>
-            <WizardInput name="fullName" label="Nombre Completo" value={answers.fullName} onChange={handleChange} />
-            <div className="grid grid-cols-2 gap-4">
-                <WizardInput name="age" label="Edad" value={answers.age} onChange={handleChange} type="number"/>
-                <WizardInput name="gender" label="Sexo" value={answers.gender} onChange={handleChange} />
-            </div>
-            <WizardInput name="occupation" label="Ocupación" value={answers.occupation} onChange={handleChange} />
-            <WizardInput name="contact" label="Teléfono de Contacto" value={answers.contact} onChange={handleChange} />
-        </div>
-    );
-};
-
-const StepReason = ({ answers, onChange }: { answers: NonNullable<ClinicalWizardAnswers['consultationReason']>, onChange: Function }) => {
-    const handleTextChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onChange('consultationReason', e.target.name, e.target.value);
-    return (
-        <div className="max-w-xl mx-auto space-y-4">
-            <p className="text-sm text-muted dark:text-main/80 mb-4">Ayúdenos a comprender por qué nos visita.</p>
-            <WizardTextarea name="reason" label="Principal motivo de la consulta" value={answers.reason} onChange={handleTextChange} placeholder="Ej: Dolor lumbar, ansiedad, problemas digestivos..." />
-            <WizardInput name="duration" label="¿Desde cuándo presenta estos síntomas?" value={answers.duration} onChange={handleTextChange} placeholder="Ej: 3 semanas, varios años, etc."/>
-        </div>
-    );
-};
-
-const SPECIFIC_AREAS_MAP: Record<string, string[]> = {
-    'cabeza': ['Frente', 'Sien', 'Occipucio', 'Cara'],
-    'pecho': ['Esternón', 'Pecho Derecho', 'Pecho Izquierdo'],
-    'abdomen': ['Abdomen Superior', 'Abdomen Inferior', 'Ombligo'],
-    'espalda-superior': ['Trapecio', 'Dorsal', 'Omóplatos'],
-    'espalda-inferior': ['Zona Lumbar', 'Sacro'],
-    'brazo-superior-derecho': ['Hombro Derecho', 'Bícep Derecho', 'Trícep Derecho'],
-    'brazo-superior-izquierdo': ['Hombro Izquierdo', 'Bícep Izquierdo', 'Trícep Izquierdo'],
-    'antebrazo-derecho': ['Codo Derecho', 'Antebrazo Derecho', 'Muñeca Derecha'],
-    'antebrazo-izquierdo': ['Codo Izquierdo', 'Antebrazo Izquierdo', 'Muñeca Izquierda'],
-    'muslo-derecho': ['Cadera Derecha', 'Cuádriceps Derecho', 'Isquiotibial Derecho'],
-    'muslo-izquierdo': ['Cadera Izquierda', 'Cuádriceps Izquierdo', 'Isquiotibial Izquierdo'],
-    'pierna-inferior-derecha': ['Rodilla Derecha', 'Espinilla Derecha', 'Pantorrilla Derecha'],
-    'pierna-inferior-izquierda': ['Rodilla Izquierda', 'Espinilla Izquierda', 'Pantorrilla Izquierda'],
-};
-
-const SpecificityModal = ({ part, options, onSelect, onClose }: { part: string, options: string[], onSelect: (specificPart: string) => void, onClose: () => void }) => (
-    <Modal isOpen={true} onClose={onClose} title={`Seleccione una zona más específica para '${part.replace(/-/g, ' ')}'`}>
-        <div className="grid grid-cols-2 gap-3">
-            {options.map(option => (
-                <button
-                    key={option}
-                    onClick={() => onSelect(option)}
-                    className="p-3 text-center bg-accent-warm text-primary font-semibold rounded-lg hover:opacity-80 transition-opacity"
-                >
-                    {option}
-                </button>
-            ))}
-        </div>
-    </Modal>
-);
-
-const StepBodyMap = ({ answers, setAnswers }: { answers: ClinicalWizardAnswers, setAnswers: React.Dispatch<React.SetStateAction<ClinicalWizardAnswers>> }) => {
-    const [view, setView] = useState<'front' | 'back'>('front');
-    const [selectedBodyPart, setSelectedBodyPart] = useState<string | null>(null);
-    const [refiningPart, setRefiningPart] = useState<string | null>(null);
-    const [painDetails, setPainDetails] = useState({ painType: '', intensity: 5, duration: '' });
-
-    const handleBodyPartClick = (part: string) => {
-        if (SPECIFIC_AREAS_MAP[part]) {
-            setRefiningPart(part);
-        } else {
-            setPainDetails({ painType: '', intensity: 5, duration: '' });
-            setSelectedBodyPart(part);
-        }
-    };
-
-    const handleRefinedPartSelect = (specificPart: string) => {
-        setRefiningPart(null);
-        setPainDetails({ painType: '', intensity: 5, duration: '' });
-        setSelectedBodyPart(specificPart);
-    };
-
-    const handleSavePainPoint = () => {
-        if (!selectedBodyPart || !painDetails.painType || !painDetails.duration) {
-            alert("Por favor complete todos los campos.");
-            return;
-        }
-        const newPoint: BodyPainPoint = {
-            bodyPart: selectedBodyPart,
-            painType: painDetails.painType,
-            intensity: painDetails.intensity,
-            duration: painDetails.duration,
-            view: view
-        };
-        setAnswers(prev => ({ ...prev, bodyMap: [...(prev.bodyMap || []), newPoint] }));
-        setSelectedBodyPart(null);
-    };
-    
-    const removePainPoint = (index: number) => {
-        setAnswers(prev => ({ ...prev, bodyMap: prev.bodyMap?.filter((_, i) => i !== index) }));
-    };
-
-    const pointsOnCurrentView = answers.bodyMap?.filter(p => p.view === view) || [];
-
-    return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-            <div>
-                <div className="flex justify-center gap-4 mb-4">
-                    <button onClick={() => setView('front')} className={`px-4 py-2 rounded-md ${view === 'front' ? 'btn-primary' : 'btn-secondary'}`}>Vista Frontal</button>
-                    <button onClick={() => setView('back')} className={`px-4 py-2 rounded-md ${view === 'back' ? 'btn-primary' : 'btn-secondary'}`}>Vista Trasera</button>
+            <div className="mt-8 pt-4 border-t border-border-main dark:border-border-dark flex justify-between">
+                <button onClick={handleBack} disabled={step===1} className="btn-secondary disabled:opacity-50">← Anterior</button>
+                {step < totalSteps ? (
+                <button onClick={handleNext} className="btn-primary">Siguiente →</button>
+                ) : (
+                <div className="flex gap-3">
+                    <button onClick={exportPDF} className="btn-secondary">Descargar PDF</button>
+                    <button onClick={submit} className="btn-primary">Finalizar y Enviar</button>
                 </div>
-                <div className="relative">
-                    {view === 'front' ? <BodyMapFront onClick={handleBodyPartClick} selectedParts={pointsOnCurrentView.map(p => p.bodyPart)} /> : <BodyMapBack onClick={handleBodyPartClick} selectedParts={pointsOnCurrentView.map(p => p.bodyPart)} />}
-                </div>
-            </div>
-            <div>
-                <h4 className="font-semibold mb-2">Puntos de Dolor Registrados</h4>
-                <div className="space-y-2 mb-4 h-32 overflow-y-auto bg-bg-main dark:bg-surface-dark p-2 rounded-md border">
-                    {answers.bodyMap?.map((point, index) => (
-                        <div key={index} className="flex justify-between items-center text-sm p-2 bg-accent-warm/50 rounded">
-                            <span>{point.bodyPart} ({point.view}) - Int: {point.intensity}/10</span>
-                            <button onClick={() => removePainPoint(index)}><TrashIcon className="w-4 h-4 text-red-500"/></button>
-                        </div>
-                    ))}
-                    {answers.bodyMap?.length === 0 && <p className="text-xs text-muted p-2">Haga clic en una parte del cuerpo para añadir un punto de dolor.</p>}
-                </div>
-                <p className="text-xs text-center text-muted">Haga clic en el cuerpo para registrar un punto de dolor.</p>
-                 {refiningPart && (
-                    <SpecificityModal
-                        part={refiningPart}
-                        options={SPECIFIC_AREAS_MAP[refiningPart]}
-                        onSelect={handleRefinedPartSelect}
-                        onClose={() => setRefiningPart(null)}
-                    />
-                 )}
-                 {selectedBodyPart && (
-                    <Modal isOpen={!!selectedBodyPart} onClose={() => setSelectedBodyPart(null)} title={`Detalles del Dolor en ${selectedBodyPart.replace(/-/g, ' ')}`}>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium">Tipo de Dolor</label>
-                                <input type="text" value={painDetails.painType} onChange={e => setPainDetails(p => ({...p, painType: e.target.value}))} placeholder="Ej: Punzante, sordo, quemante..." className="w-full input-style" />
-                            </div>
-                             <div>
-                                <label className="block text-sm font-medium">Intensidad (0-10)</label>
-                                <input type="range" min="0" max="10" value={painDetails.intensity} onChange={e => setPainDetails(p => ({...p, intensity: parseInt(e.target.value)}))} className="w-full" />
-                                <span className="text-center block font-bold">{painDetails.intensity}</span>
-                            </div>
-                             <div>
-                                <label className="block text-sm font-medium">Duración</label>
-                                <input type="text" value={painDetails.duration} onChange={e => setPainDetails(p => ({...p, duration: e.target.value}))} placeholder="Ej: Constante, intermitente, 2 semanas..." className="w-full input-style" />
-                            </div>
-                            <div className="flex justify-end gap-2">
-                                <button onClick={() => setSelectedBodyPart(null)} className="btn-secondary">Cancelar</button>
-                                <button onClick={handleSavePainPoint} className="btn-primary">Guardar Punto</button>
-                            </div>
-                        </div>
-                    </Modal>
                 )}
             </div>
         </div>
-    );
-};
+        <style>{`
+            .btn-primary { padding: 10px 20px; font-weight: 600; color: #FFFFFF; background-color: #083C70; border-radius: 8px; transition: all 0.2s; }
+            .btn-primary:hover { opacity: 0.9; }
+            .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+            .btn-secondary { padding: 10px 20px; font-weight: 600; background-color: #e5e7eb; border-radius: 8px; transition: all 0.2s; }
+            .dark .btn-secondary { background-color: #4b5563; color: #E6F1FF; }
+            .btn-ghost { background-color: transparent; border: none; color: #C62828; padding: 8px; border-radius: 4px; transition: all 0.2s; }
+            .btn-ghost:hover { background-color: rgba(200, 0, 0, 0.1); }
+            .input-style {
+                padding: 8px 12px;
+                background-color: white;
+                border: 1px solid #E9DFD3;
+                border-radius: 6px;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+                width: 100%;
+            }
+            .dark .input-style {
+                background-color: #0A192F;
+                border-color: #243A59;
+                color: #E6F1FF;
+            }
+        `}</style>
+    </PageWrapper>
+  );
+}
 
-const MTCToggle = ({ label, options, value, onChange, icons }: {label: string, options: string[], value: string, onChange: (val: string) => void, icons: React.ReactNode[] }) => (
-    <div className="p-3 bg-bg-main dark:bg-surface-dark rounded-lg">
-        <label className="block text-sm font-medium text-main dark:text-main mb-2">{label}</label>
-        <div className="flex bg-bg-alt dark:bg-bg-dark rounded-md p-1">
-            {options.map((opt, i) => (
-                <button key={opt} type="button" onClick={() => onChange(opt)} className={`flex-1 p-2 rounded text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${value === opt ? 'bg-primary text-white shadow' : 'text-muted'}`}>
-                    {icons[i]} {opt}
-                </button>
-            ))}
-        </div>
+function WizardProgress({ currentStep, totalSteps }: { currentStep: number; totalSteps: number }) {
+  return (
+    <div>
+      <div className="text-xs font-semibold text-blue-600">PASO {currentStep} DE {totalSteps}</div>
+      <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+        <div className="h-2 bg-blue-500" style={{ width: `${(currentStep / totalSteps) * 100}%`, transition: 'width 0.3s ease-in-out' }} />
+      </div>
+      <div className="text-lg font-semibold mt-1">{wizardSteps.find(s => s.number === currentStep)?.title}</div>
     </div>
-);
+  );
+}
 
-const StepMTC = ({ answers, onChange }: { answers: NonNullable<ClinicalWizardAnswers['mtc']>, onChange: Function }) => {
-    return (
-        <div className="max-w-2xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-4">
-             <p className="sm:col-span-2 text-sm text-muted dark:text-main/80">Seleccione la opción que mejor describa sus síntomas generales.</p>
-             <MTCToggle label="Sensación Corporal" options={['Frío', 'Calor']} value={answers.coldHeat} onChange={(val) => onChange('coldHeat', val)} icons={[<SnowflakeIcon className="w-4 h-4"/>, <FlameIcon className="w-4 h-4"/>]} />
-             <MTCToggle label="Peor Momento del Día" options={['Día', 'Noche']} value={answers.dayNight} onChange={(val) => onChange('dayNight', val)} icons={[<SunIcon className="w-4 h-4"/>, <MoonIcon className="w-4 h-4"/>]} />
-             <MTCToggle label="Naturaleza del Síntoma" options={['Plenitud', 'Vacío']} value={answers.fullEmpty} onChange={(val) => onChange('fullEmpty', val)} icons={[<ArrowHorizontalIcon className="w-4 h-4"/>, <CircleDashedIcon className="w-4 h-4"/>]} />
-             <MTCToggle label="Inicio del Síntoma" options={['Agudo', 'Crónico']} value={answers.onset} onChange={(val) => onChange('onset', val)} icons={[<ZapIcon className="w-4 h-4"/>, <HourglassIcon className="w-4 h-4"/>]} />
-        </div>
+function StepWelcome({ onNext, description, sex, onSexChange }: { onNext: () => void; description?: string; sex: Sex; onSexChange: (s: Sex) => void }) {
+  return (
+    <div className="text-center">
+      <div className="text-2xl font-semibold mb-2">{description || 'Consulta inicial'}</div>
+      <div className="inline-flex gap-2 p-2 bg-gray-100 dark:bg-bg-dark rounded-xl mb-4">
+        <button className={`btn-secondary ${sex === 'female' ? 'ring-2 ring-primary' : ''}`} onClick={() => onSexChange('female')}>Mujer</button>
+        <button className={`btn-secondary ${sex === 'male' ? 'ring-2 ring-primary' : ''}`} onClick={() => onSexChange('male')}>Hombre</button>
+      </div>
+      <div className="text-gray-600 dark:text-text-muted-dark">Selecciona tu sexo para ajustar las regiones anatómicas visibles.</div>
+      <button onClick={onNext} className="btn-primary mt-6">Comenzar</button>
+    </div>
+  );
+}
+
+function StepGeneralData({ answers, onChange }: { answers: any, onChange: Function }) {
+  const h = (e: any) => onChange('generalData', e.target.name, e.target.value);
+  return (
+    <div className="grid sm:grid-cols-2 gap-3 max-w-3xl mx-auto">
+      <input className="input-style" name="fullName" placeholder="Nombre Completo" value={answers.fullName} onChange={h} />
+      <input className="input-style" name="age" type="number" placeholder="Edad" value={answers.age} onChange={h} />
+      <input className="input-style" name="gender" placeholder="Sexo biológico" value={answers.gender} onChange={h} />
+      <input className="input-style" name="occupation" placeholder="Ocupación" value={answers.occupation} onChange={h} />
+      <input className="input-style" name="contact" placeholder="Teléfono" value={answers.contact} onChange={h} />
+      <textarea className="input-style sm:col-span-2" name="antecedentes" placeholder="Antecedentes médicos personales" value={answers.antecedentes} onChange={h} />
+      <textarea className="input-style sm:col-span-2" name="familiares" placeholder="Antecedentes familiares" value={answers.familiares} onChange={h} />
+      <textarea className="input-style sm:col-span-2" name="habitos" placeholder="Hábitos de vida" value={answers.habitos} onChange={h} />
+      <textarea className="input-style" name="alergias" placeholder="Alergias" value={answers.alergias} onChange={h} />
+      <textarea className="input-style" name="medicacion" placeholder="Medicación actual" value={answers.medicacion} onChange={h} />
+    </div>
+  );
+}
+
+function StepReason({ answers, onChange }: { answers: any, onChange: Function }) {
+  const h = (e: any) => onChange('consultationReason', e.target.name, e.target.value);
+  const toggle = (opt: string) => {
+    const arr = answers.associated.includes(opt) ? answers.associated.filter((x: string) => x !== opt) : [...answers.associated, opt];
+    onChange('consultationReason', 'associated', arr);
+  };
+  return (
+    <div className="space-y-3 max-w-3xl mx-auto">
+      <textarea className="input-style" name="reason" placeholder="Motivo principal" value={answers.reason} onChange={h} />
+      <input className="input-style" name="duration" placeholder="Duración de síntomas" value={answers.duration} onChange={h} />
+      <label className="block text-main dark:text-main">Severidad: {answers.severity}/10
+        <input className="w-full" type="range" min={0} max={10} name="severity" value={answers.severity} onChange={(e) => onChange('consultationReason', 'severity', parseInt(e.target.value))} />
+      </label>
+      <textarea className="input-style" name="expectations" placeholder="Expectativas del paciente" value={answers.expectations} onChange={h} />
+      <div>
+        <div className="mb-1 font-medium text-main dark:text-main">Síntomas asociados</div>
+        {['Fatiga', 'Insomnio', 'Estrés', 'Problemas digestivos'].map((opt) => (
+          <label key={opt} className="inline-flex items-center gap-2 mr-4 mb-2">
+            <input type="checkbox" checked={answers.associated.includes(opt)} onChange={() => toggle(opt)} /> {opt}
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StepBodyMapHybrid({ sex, findings, onAdd, onRemoveIndex }: { sex: Sex; findings: PainFinding[]; onAdd: (f: PainFinding) => void; onRemoveIndex: (i: number) => void }) {
+  const [overlay, setOverlay] = useState<{ open: boolean; region: RegionKey | null }>({ open: false, region: null });
+
+  const openRegion = (region: RegionKey) => setOverlay({ open: true, region });
+  const close = () => setOverlay({ open: false, region: null });
+  
+  const formatFactors = (factors: string[] = []): string => {
+      if (factors.length === 0) return '';
+      
+      const aggravates = factors
+          .filter(f => f.startsWith('empeora_'))
+          .map(f => f.replace('empeora_', ''))
+          .join(', ');
+          
+      const alleviates = factors
+          .filter(f => f.startsWith('alivia_'))
+          .map(f => f.replace('alivia_', ''))
+          .join(', ');
+  
+      let parts = [];
+      if (aggravates) parts.push(`Empeora: ${aggravates}`);
+      if (alleviates) parts.push(`Alivia: ${alleviates}`);
+      
+      return parts.length > 0 ? `· ${parts.join('; ')}` : '';
+  }
+
+  return (
+    <div className="grid lg:grid-cols-2 gap-6">
+      <div>
+        <AnatomicalSVG sex={sex} onRegionClick={openRegion} />
+        <p className="text-xs text-gray-500 dark:text-text-muted-dark mt-2">Toca una zona para describir el dolor. Regiones grandes y botones grandes: ideal para adultos mayores.</p>
+      </div>
+      <div>
+        <h4 className="font-semibold mb-2 text-main dark:text-main">Zonas seleccionadas</h4>
+        {findings.length === 0 && <div className="text-sm text-gray-500 dark:text-text-muted-dark">Nada aún. Toca el cuerpo para agregar.</div>}
+        <ul className="space-y-2">
+          {findings.map((f, i) => (
+            <li key={i} className="border border-border-main dark:border-border-dark rounded-lg p-3 flex items-center justify-between">
+              <div className="text-sm">
+                <div className="font-medium text-main dark:text-main capitalize">{labelRegion(f.region)} ({f.side})</div>
+                <div className="text-gray-600 dark:text-text-muted-dark capitalize">{f.quality} · Intensidad {f.intensity}/10 {formatFactors(f.factors)}</div>
+              </div>
+              <button className="btn-ghost" onClick={() => onRemoveIndex(i)}>Eliminar</button>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {overlay.open && overlay.region && (
+        <MiniQuestionnaire
+          region={overlay.region}
+          onCancel={close}
+          onConfirm={(payload) => { onAdd(payload); close(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function labelRegion(k: RegionKey) {
+  const map: Record<RegionKey, string> = {
+    cabeza: 'Cabeza', cuello: 'Cuello', pecho: 'Pecho', abdomen: 'Abdomen', pelvis: 'Pelvis',
+    mama_izq: 'Mama izquierda', mama_der: 'Mama derecha',
+    hombro_izq: 'Hombro izquierdo', hombro_der: 'Hombro derecho',
+    brazo_sup_izq: 'Brazo izq.', brazo_sup_der: 'Brazo der.',
+    codo_izq: 'Codo izq.', codo_der: 'Codo der.',
+    antebrazo_izq: 'Antebrazo izq.', antebrazo_der: 'Antebrazo der.',
+    mano_izq: 'Mano izq.', mano_der: 'Mano der.',
+    muslo_izq: 'Muslo izq.', muslo_der: 'Muslo der.',
+    rodilla_izq: 'Rodilla izq.', rodilla_der: 'Rodilla der.',
+    pierna_izq: 'Pierna izq.', pierna_der: 'Pierna der.',
+    pie_izq: 'Pie izq.', pie_der: 'Pie der.',
+  };
+  return map[k];
+}
+
+function AnatomicalSVG({ sex, onRegionClick }: { sex: Sex; onRegionClick: (r: RegionKey) => void }) {
+  const R = ({ id, d, fill, label, onClick }: any) => (
+    <path
+      d={d}
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onClick()}
+      aria-label={label}
+      className="transition-all outline-none focus:ring-2 focus:ring-offset-1"
+      style={{ fill, cursor: 'pointer', opacity: 0.85 }}
+    />
+  );
+
+  return (
+    <svg viewBox="0 0 260 640" className="w-full h-auto bg-white rounded-xl shadow-sm">
+      <g fill="none" stroke="#1f2937" strokeOpacity="0.15" strokeWidth="2">
+        <path d="M130 30c-18 0-30 14-30 28v16c-16 10-26 28-30 52-2 15-10 28-20 40-10 12-16 26-16 42 0 14 4 28 10 40 3 6 6 12 6 18v46c0 22 10 36 30 44 8 4 12 10 14 18l8 44c4 16 16 28 32 28s28-12 32-28l8-44c2-8 6-14 14-18 20-8 30-22 30-44v-46c0-6 3-12 6-18 6-12 10-26 10-40 0-16-6-30-16-42-10-12-18-25-20-40-4-24-14-42-30-52V58c0-14-12-28-30-28z" />
+      </g>
+      <R id="cabeza" label="Cabeza" fill="#cbd5e1" onClick={() => onRegionClick('cabeza')}
+        d="M130 36c-14 0-24 10-24 22s10 22 24 22 24-10 24-22-10-22-24-22z" />
+      <R id="cuello" label="Cuello" fill="#cbd5e1" onClick={() => onRegionClick('cuello')}
+        d="M116 80h28c2 0 4 2 4 4v14c0 6-8 10-18 10s-18-4-18-10V84c0-2 2-4 4-4z" />
+      <R id="pecho" label="Pecho" fill="#cbd5e1" onClick={() => onRegionClick('pecho')}
+        d="M84 108c14-8 32-12 46-12s32 4 46 12c8 4 12 12 12 20v18c0 12-10 22-22 22H94c-12 0-22-10-22-22v-18c0-8 4-16 12-20z" />
+      {sex === 'female' && (
+        <>
+          <R id="mama_izq" label="Mama izquierda" fill="#cbd5e1" onClick={() => onRegionClick('mama_izq')}
+            d="M98 142c-10 0-16 8-16 16s6 16 16 16 16-8 16-16-6-16-16-16z" />
+          <R id="mama_der" label="Mama derecha" fill="#cbd5e1" onClick={() => onRegionClick('mama_der')}
+            d="M162 142c10 0 16 8 16 16s-6 16-16 16-16-8-16-16 6-16 16-16z" />
+        </>
+      )}
+      <R id="abdomen" label="Abdomen" fill="#cbd5e1" onClick={() => onRegionClick('abdomen')}
+        d="M92 170h76c6 0 10 4 10 10v30c0 16-14 28-30 28h-36c-16 0-30-12-30-28v-30c0-6 4-10 10-10z" />
+      <R id="pelvis" label="Pelvis" fill="#cbd5e1" onClick={() => onRegionClick('pelvis')}
+        d="M98 238h64c6 0 10 4 10 10v16c0 10-10 20-22 20h-40c-12 0-22-10-22-20v-16c0-6 4-10 10-10z" />
+      <R id="hombro_izq" label="Hombro izquierdo" fill="#cbd5e1" onClick={() => onRegionClick('hombro_izq')}
+        d="M76 118c-10 0-18 8-24 16s-10 16-10 22 10 10 18 8 18-8 22-16 6-16 2-22-4-8-8-8z" />
+      <R id="hombro_der" label="Hombro derecho" fill="#cbd5e1" onClick={() => onRegionClick('hombro_der')}
+        d="M184 118c10 0 18 8 24 16s10 16 10 22-10 10-18 8-18-8-22-16-6-16-2-22 4-8 8-8z" />
+      <R id="brazo_sup_izq" label="Brazo superior izquierdo" fill="#cbd5e1" onClick={() => onRegionClick('brazo_sup_izq')}
+        d="M60 152c-6 0-12 6-14 12-6 18-6 38 2 56 4 10 16 14 22 10 10-6 12-18 12-28 0-12-2-24-6-36-2-8-8-14-16-14z" />
+      <R id="brazo_sup_der" label="Brazo superior derecho" fill="#cbd5e1" onClick={() => onRegionClick('brazo_sup_der')}
+        d="M200 152c6 0 12 6 14 12 6 18 6 38-2 56-4 10-16 14-22 10-10-6-12-18-12-28 0-12 2-24 6-36 2-8 8-14 16-14z" />
+      <R id="codo_izq" label="Codo izquierdo" fill="#cbd5e1" onClick={() => onRegionClick('codo_izq')}
+        d="M62 224c-10 2-18 16-12 26 4 8 12 10 22 8 8-2 14-10 12-18-2-10-14-18-22-16z" />
+      <R id="codo_der" label="Codo derecho" fill="#cbd5e1" onClick={() => onRegionClick('codo_der')}
+        d="M198 224c10 2 18 16 12 26-4 8-12 10-22 8-8-2-14-10-12-18 2-10 14-18 22-16z" />
+      <R id="antebrazo_izq" label="Antebrazo izquierdo" fill="#cbd5e1" onClick={() => onRegionClick('antebrazo_izq')}
+        d="M54 248c-10 0-14 12-14 22 0 18 4 36 14 50 6 8 18 8 24 0 6-10 6-22 4-32s-4-22-10-32c-4-6-10-8-18-8z" />
+      <R id="antebrazo_der" label="Antebrazo derecho" fill="#cbd5e1" onClick={() => onRegionClick('antebrazo_der')}
+        d="M206 248c10 0 14 12 14 22 0 18-4 36-14 50-6 8-18 8-24 0-6-10-6-22-4-32s4-22 10-32c4-6 10-8 18-8z" />
+      <R id="mano_izq" label="Mano izquierda" fill="#cbd5e1" onClick={() => onRegionClick('mano_izq')}
+        d="M60 322c-10 0-18 8-18 18 0 10 8 18 18 18 12 0 20-8 20-18s-8-18-20-18z" />
+      <R id="mano_der" label="Mano derecha" fill="#cbd5e1" onClick={() => onRegionClick('mano_der')}
+        d="M200 322c10 0 18 8 18 18 0 10-8 18-18 18-12 0-20-8-20-18s8-18 20-18z" />
+      <R id="muslo_izq" label="Muslo izquierdo" fill="#cbd5e1" onClick={() => onRegionClick('muslo_izq')}
+        d="M106 274c-16 0-28 10-30 26-2 18 0 40 6 60 4 12 12 20 24 20h10c8 0 12-8 12-16v-80c0-6-8-10-22-10z" />
+      <R id="muslo_der" label="Muslo derecho" fill="#cbd5e1" onClick={() => onRegionClick('muslo_der')}
+        d="M154 274c16 0 28 10 30 26 2 18 0 40-6 60-4 12-12 20-24 20h-10c-8 0-12-8-12-16v-80c0-6 8-10 22-10z" />
+      <R id="rodilla_izq" label="Rodilla izquierda" fill="#cbd5e1" onClick={() => onRegionClick('rodilla_izq')}
+        d="M110 384c-10 0-18 8-18 18s8 18 18 18 18-8 18-18-8-18-18-18z" />
+      <R id="rodilla_der" label="Rodilla derecha" fill="#cbd5e1" onClick={() => onRegionClick('rodilla_der')}
+        d="M150 384c10 0 18 8 18 18s-8 18-18 18-18-8-18-18 8-18 18-18z" />
+      <R id="pierna_izq" label="Pierna izquierda" fill="#cbd5e1" onClick={() => onRegionClick('pierna_izq')}
+        d="M106 416c-12 0-20 8-20 20v64c0 12 8 22 20 22h10c8 0 12-6 12-14v-80c0-6-10-12-22-12z" />
+      <R id="pierna_der" label="Pierna derecha" fill="#cbd5e1" onClick={() => onRegionClick('pierna_der')}
+        d="M154 416c12 0 20 8 20 20v64c0 12-8 22-20 22h-10c-8 0-12-6-12-14v-80c0-6 10-12 22-12z" />
+      <R id="pie_izq" label="Pie izquierdo" fill="#cbd5e1" onClick={() => onRegionClick('pie_izq')}
+        d="M104 524c-16 0-28 8-28 16 0 8 10 12 24 12h18c8 0 14-6 14-12 0-8-8-16-28-16z" />
+      <R id="pie_der" label="Pie derecho" fill="#cbd5e1" onClick={() => onRegionClick('pie_der')}
+        d="M156 524c16 0 28 8 28 16 0 8-10 12-24 12h-18c-8 0-14-6-14-12 0-8 8-16 28-16z" />
+    </svg>
+  );
+}
+
+function MiniQuestionnaire({ region, onCancel, onConfirm }: { region: RegionKey; onCancel: () => void; onConfirm: (f: PainFinding) => void }) {
+  const [side, setSide] = useState<'izquierdo' | 'derecho' | 'ambos' | 'medio'>(defaultSide(region));
+  const [quality, setQuality] = useState<PainFinding['quality']>('punzante');
+  const [intensity, setIntensity] = useState(5);
+  const [factors, setFactors] = useState<string[]>([]);
+
+  const toggleFactor = (prefix: 'empeora' | 'alivia', factor: string) => {
+    const key = `${prefix}_${factor}`;
+    setFactors(currentFactors =>
+      currentFactors.includes(key)
+        ? currentFactors.filter(f => f !== key)
+        : [...currentFactors, key]
     );
-};
+  };
+  
+  const factorOptions = [
+      { key: 'movimiento', label: 'Con Movimiento' },
+      { key: 'reposo', label: 'Con Reposo' },
+      { key: 'frío', label: 'Con el Frío' },
+      { key: 'calor', label: 'Con el Calor' },
+      { key: 'presión', label: 'Al Presionar' },
+  ];
+  
+  const FactorButton = ({ label, isSelected, onToggle }: { label: string, isSelected: boolean, onToggle: () => void }) => (
+      <label className={`cursor-pointer p-2 px-3 rounded-full border text-sm font-medium transition-colors ${isSelected ? 'bg-primary text-white border-primary' : 'bg-bg-main dark:bg-surface-dark border-border-main dark:border-border-dark'}`}>
+          <input type="checkbox" checked={isSelected} onChange={onToggle} className="sr-only" />
+          {label}
+      </label>
+  );
 
-const tongueFeatures = ['Pálida', 'Roja', 'Púrpura', 'Saburra Blanca', 'Saburra Amarilla', 'Saburra Gruesa', 'Grietas', 'Marcas Dentales', 'Punta Roja'];
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-4">
+      <div className="bg-white dark:bg-bg-dark w-full max-w-md rounded-2xl shadow-lg p-4 space-y-4">
+        <div className="text-lg font-semibold capitalize text-main dark:text-main">{labelRegion(region)}</div>
 
-const StepTongue = ({ answers, onChange }: { answers: string[], onChange: (value: string) => void }) => {
-    return (
-        <div className="max-w-2xl mx-auto">
-            <p className="text-sm text-muted dark:text-main/80 mb-4">Mírese la lengua en un espejo y seleccione todas las características que observe. Esto nos ayuda en el diagnóstico.</p>
-            <div className="flex flex-wrap gap-3">
-                {tongueFeatures.map(feature => (
-                    <label key={feature} className={`cursor-pointer p-2 px-3 rounded-full border text-sm font-medium transition-colors ${answers.includes(feature) ? 'bg-primary text-white border-primary' : 'bg-bg-main dark:bg-surface-dark border-border-main dark:border-border-dark'}`}>
-                        <input type="checkbox" checked={answers.includes(feature)} onChange={() => onChange(feature)} className="sr-only" />
-                        {feature}
-                    </label>
-                ))}
+        {showsSide(region) && (
+          <div>
+            <div className="text-sm text-gray-600 dark:text-text-muted-dark mb-1">¿De qué lado?</div>
+            <div className="grid grid-cols-3 gap-2">
+              {(['izquierdo', 'derecho', 'ambos'] as const).map((s) => (
+                <button key={s} onClick={() => setSide(s)} className={`btn-secondary ${side === s ? 'ring-2 ring-primary' : ''}`}>{s}</button>
+              ))}
             </div>
-        </div>
-    );
-};
+          </div>
+        )}
 
-const SummarySection = ({ title, step, onEdit, children }: { title: string, step: number, onEdit: (step: number) => void, children: React.ReactNode }) => (
-    <div className="p-4 bg-bg-main dark:bg-surface-dark rounded-lg">
-        <div className="flex justify-between items-center mb-2">
-            <h4 className="font-semibold text-main dark:text-main">{title}</h4>
-            <button onClick={() => onEdit(step)} className="text-xs text-primary dark:text-accent-turquoise font-semibold flex items-center gap-1"><EditIcon className="w-3 h-3"/> Editar</button>
+        <div>
+          <div className="text-sm text-gray-600 dark:text-text-muted-dark mb-1">¿Cómo es el dolor?</div>
+          <div className="grid grid-cols-3 gap-2">
+            {qualityOptions.map((q) => (
+              <button key={q.key} onClick={() => setQuality(q.key)} className={`btn-secondary flex items-center justify-center gap-2 ${quality === q.key ? 'ring-2 ring-primary' : ''}`}>
+                <span aria-hidden>{q.emoji}</span> {q.label}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="text-sm text-muted dark:text-main/80 space-y-1">{children}</div>
+
+        <div>
+          <div className="flex items-center justify-between text-sm text-gray-600 dark:text-text-muted-dark">
+            <span>Intensidad</span><span>{intensity}/10</span>
+          </div>
+          <input type="range" min={0} max={10} value={intensity} onChange={(e) => setIntensity(parseInt(e.target.value))} className="w-full" />
+          <div className="flex justify-between text-xs mt-1"><span>🙂</span><span>😖</span></div>
+        </div>
+
+        <div>
+          <h4 className="text-sm font-semibold text-gray-700 dark:text-text-muted-dark mb-2">¿Qué EMPEORA el dolor?</h4>
+          <div className="flex flex-wrap gap-2">
+            {factorOptions.map(f => (
+              <FactorButton key={`empeora_${f.key}`} label={f.label} isSelected={factors.includes(`empeora_${f.key}`)} onToggle={() => toggleFactor('empeora', f.key)} />
+            ))}
+             <FactorButton key="empeora_nocturno" label="Por la Noche" isSelected={factors.includes('empeora_nocturno')} onToggle={() => toggleFactor('empeora', 'nocturno')} />
+          </div>
+        </div>
+        
+        <div>
+          <h4 className="text-sm font-semibold text-gray-700 dark:text-text-muted-dark mb-2">¿Qué ALIVIA el dolor?</h4>
+           <div className="flex flex-wrap gap-2">
+            {factorOptions.map(f => (
+              <FactorButton key={`alivia_${f.key}`} label={f.label} isSelected={factors.includes(`alivia_${f.key}`)} onToggle={() => toggleFactor('alivia', f.key)} />
+            ))}
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2 border-t border-border-main dark:border-border-dark">
+          <button className="btn-secondary" onClick={onCancel}>Cancelar</button>
+          <button className="btn-primary" onClick={() => onConfirm({ region, side, quality, intensity, factors })}>Guardar</button>
+        </div>
+      </div>
     </div>
-);
+  );
+}
 
-const StepSummary = ({ answers, goToStep }: { answers: ClinicalWizardAnswers, goToStep: (step: number) => void }) => {
-    return (
-        <div className="max-w-3xl mx-auto space-y-4">
-             <p className="text-sm text-muted dark:text-main/80">Por favor, revise la información que ha proporcionado antes de enviarla.</p>
-             <SummarySection title="Datos Generales" step={2} onEdit={goToStep}>
-                 <p><strong>Nombre:</strong> {answers.generalData?.fullName}</p>
-                 <p><strong>Edad:</strong> {answers.generalData?.age}, <strong>Sexo:</strong> {answers.generalData?.gender}</p>
-             </SummarySection>
-             <SummarySection title="Motivo de Consulta" step={3} onEdit={goToStep}>
-                 <p><strong>Motivo:</strong> {answers.consultationReason?.reason}</p>
-                 <p><strong>Duración:</strong> {answers.consultationReason?.duration}</p>
-             </SummarySection>
-             <SummarySection title="Mapa de Dolor" step={4} onEdit={goToStep}>
-                 {answers.bodyMap && answers.bodyMap.length > 0 ? (
-                    answers.bodyMap.map((p, i) => <p key={i}>- {p.bodyPart}: Intensidad {p.intensity}/10, {p.painType}</p>)
-                 ) : <p>No se registraron puntos de dolor.</p>}
-             </SummarySection>
-             <SummarySection title="Principios MTC" step={5} onEdit={goToStep}>
-                 <p>{answers.mtc?.coldHeat}, {answers.mtc?.dayNight}, {answers.mtc?.fullEmpty}, {answers.mtc?.onset}</p>
-             </SummarySection>
-             <SummarySection title="Evaluación de Lengua" step={6} onEdit={goToStep}>
-                 <p>{answers.tongue?.join(', ') || 'No se seleccionaron características.'}</p>
-             </SummarySection>
-        </div>
-    );
-};
+const qualityOptions: { key: PainFinding['quality']; label: string; emoji: string }[] = [
+  { key: 'punzante', label: 'Punzante', emoji: '⚡' },
+  { key: 'quemante', label: 'Quemante', emoji: '🔥' },
+  { key: 'presion', label: 'Presión', emoji: '🔒' },
+  { key: 'intermitente', label: 'Intermitente', emoji: '🌊' },
+  { key: 'ardor', label: 'Ardor', emoji: '💥' },
+  { key: 'calambre', label: 'Calambre', emoji: '🌀' },
+];
 
+function showsSide(region: RegionKey) {
+  const unilateral: RegionKey[] = ['cabeza', 'cuello', 'pecho', 'abdomen', 'pelvis'];
+  return !unilateral.includes(region);
+}
 
-// --- BODY MAP SVG COMPONENTS ---
+function defaultSide(region: RegionKey): 'izquierdo' | 'derecho' | 'ambos' | 'medio' {
+  if (region.endsWith('_izq') || region.endsWith('_der')) {
+      return region.includes('_izq') ? 'izquierdo' : 'derecho';
+  }
+  return showsSide(region) ? 'izquierdo' : 'medio';
+}
 
-const BodyMapFront = ({ onClick, selectedParts }: { onClick: (part: string) => void; selectedParts: string[] }) => {
-    const BodyPart = ({ id, d, title }: { id: string; d: string; title?: string }) => {
-        const isSelected = selectedParts.some(partName => partName.toLowerCase().includes(id.replace(/-/g, ' ')));
-        return (
-            <path
-                id={id}
-                d={d}
-                className={`cursor-pointer transition-colors duration-200 ${isSelected ? 'fill-accent-red/80' : 'fill-gray-300 dark:fill-gray-600 hover:fill-primary/50'}`}
-                onClick={() => onClick(id)}
-            >
-                {title ? <title>{title}</title> : null}
-            </path>
-        );
-    }
-    return (
-        <svg viewBox="0 0 300 600" xmlns="http://www.w3.org/2000/svg" className="w-full max-w-[250px] mx-auto">
-            <g id="body-front">
-                <BodyPart id="cabeza" title="Cabeza" d="M150,52c-20.5,0-37-16.5-37-37s16.5-37,37-37,37,16.5,37,37-16.5,37-37,37Z" />
-                <BodyPart id="cuello" title="Cuello" d="M132,70c0,14,3,22,18,22s18-8,18-22c0-6-36-6-36,0Z" />
-                <BodyPart id="hombro-izquierdo" title="Hombro izquierdo" d="M92,100c-14,0-26-10-28-24l-.6-4.2c-1.5-10.2,7.7-19,18-17.1,13.6,2.3,24.6,19.3,28.6,36.3,1.7,7-7,9-18,9Z" />
-                <BodyPart id="hombro-derecho" title="Hombro derecho" d="M208,100c14,0,26-10,28-24l.6-4.2c1.5-10.2-7.7-19-18-17.1-13.6,2.3-24.6,19.3-28.6,36.3-1.7,7,7,9,18,9Z" />
-                <BodyPart id="pecho" title="Pecho" d="M110,100c-9,0-16,7.3-16,16.3,0,13.1,2.6,25.4,6.4,34.7,5.6,13.8,16.3,19,49.6,19s44-5.2,49.6-19c3.8-9.3,6.4-21.6,6.4-34.7,0-9-7-16.3-16-16.3H110Z" />
-                <BodyPart id="abdomen" title="Abdomen" d="M118,170c-6.5,0-12,5.2-11.7,11.7,.6,12.5,2.8,27.2,7.7,39.3,6.9,17.3,19.5,23.7,35.9,23.7s29-6.4,35.9-23.7c4.9-12.1,7.1-26.8,7.7-39.3,.3-6.5-5.2-11.7-11.7-11.7H118Z" />
-                <BodyPart id="pelvis" title="Pelvis" d="M120,244c-10,0-16,9-13,18,6,18,19,30,43,30s37-12,43-30c3-9-3-18-13-18h-60Z" />
-                <BodyPart id="brazo-superior-izquierdo" title="Brazo superior izquierdo" d="M84,108c-9,0-16,7.3-15.5,16.3,1,22.8,4.7,63.7,7.5,83.7,1.3,9.2,9,15.9,18.3,15.9,5.2,0,9.3-4.1,9.1-9.3l-2.4-73.6c-.4-12.7-6.4-32.9-17-32.9Z" />
-                <BodyPart id="brazo-superior-derecho" title="Brazo superior derecho" d="M216,108c9,0,16,7.3,15.5,16.3-1,22.8-4.7,63.7-7.5,83.7-1.3,9.2-9,15.9-18.3,15.9-5.2,0-9.3-4.1-9.1-9.3l2.4-73.6c.4-12.7,6.4-32.9,17-32.9Z" />
-                <BodyPart id="antebrazo-izquierdo" title="Antebrazo izquierdo" d="M75,206c-6.5,0-11.6,5.7-10.6,12.1,2.3,15.1,6.3,36.1,8.5,47.9,1.6,8.6,8.9,14.7,17.6,14.7,5,0,9-4.2,8.7-9.2l-2.1-43.5c-.5-9.7-8.1-21.9-22.1-21.9Z" />
-                <BodyPart id="antebrazo-derecho" title="Antebrazo derecho" d="M225,206c6.5,0,11.6,5.7,10.6,12.1-2.3,15.1-6.3,36.1-8.5,47.9-1.6,8.6-8.9,14.7-17.6,14.7-5,0-9-4.2-8.7-9.2l2.1-43.5c.5-9.7,8.1-21.9,22.1-21.9Z" />
-                <BodyPart id="mano-izquierda" title="Mano izquierda" d="M86,279c-9,0-16,7.3-16,16.3,0,7.4,3.1,14.5,8.5,19.5,4.3,4,9.8,6.2,15.6,6.2,4.9,0,8.9-4,8.9-8.9,0-16.3-4.2-33.1-17-33.1Z" />
-                <BodyPart id="mano-derecha" title="Mano derecha" d="M214,279c9,0,16,7.3,16,16.3,0,7.4-3.1,14.5-8.5,19.5-4.3,4-9.8,6.2-15.6,6.2-4.9,0-8.9-4-8.9-8.9,0-16.3,4.2-33.1,17-33.1Z" />
-                <BodyPart id="muslo-izquierdo" title="Muslo izquierdo" d="M128,290c-11,0-20,8.9-20,19.9,0,21.9,1.9,59.9,4.2,78.9,1.3,10.6,9.8,18.6,20.5,18.6,6,0,10.8-4.8,10.8-10.8V306c0-8.8-6.2-16-15.5-16Z" />
-                <BodyPart id="muslo-derecho" title="Muslo derecho" d="M172,290c11,0,20,8.9,20,19.9,0,21.9-1.9,59.9-4.2,78.9-1.3,10.6-9.8,18.6-20.5,18.6-6,0-10.8-4.8-10.8-10.8V306c0-8.8,6.2-16,15.5-16Z" />
-                <BodyPart id="pierna-inferior-izquierda" title="Pierna inferior izquierda" d="M130,417c-9.5,0-17,7.7-16.6,17.2,.7,17.6,2.8,45.8,4.8,59.8,1.3,9.1,9.1,15.9,18.3,15.9,5.7,0,10.3-4.6,10.3-10.3v-65.9c0-8.9-7.2-16.7-16.8-16.7Z" />
-                <BodyPart id="pierna-inferior-derecha" title="Pierna inferior derecha" d="M170,417c9.5,0,17,7.7,16.6,17.2-.7,17.6-2.8,45.8-4.8,59.8-1.3,9.1-9.1,15.9-18.3,15.9-5.7,0-10.3-4.6-10.3-10.3v-65.9c0-8.9,7.2-16.7,16.8-16.7Z" />
-                <BodyPart id="pie-izquierdo" title="Pie izquierdo" d="M126,510c-10,0-18,8-18,18,0,8,6,14,14,15l22,3c6,.8,11-4,11-10v-8c0-4.4-3.6-8-8-8h-21Z" />
-                <BodyPart id="pie-derecho" title="Pie derecho" d="M174,510c10,0,18,8,18,18,0,8-6,14-14,15l-22,3c-6,.8-11-4-11-10v-8c0-4.4,3.6-8,8-8h21Z" />
-            </g>
-        </svg>
-    );
-};
+function StepMTC({ answers, onChange }: { answers: any, onChange: Function }) {
+  const h = (e: any) => onChange('mtc', e.target.name, e.target.value);
+  return (
+    <div className="grid sm:grid-cols-2 gap-3 max-w-3xl mx-auto">
+      <input className="input-style" name="apetito" placeholder="Apetito/Digestión" value={answers.apetito} onChange={h} />
+      <input className="input-style" name="sueno" placeholder="Sueño" value={answers.sueno} onChange={h} />
+      <input className="input-style" name="emociones" placeholder="Emociones predominantes" value={answers.emociones} onChange={h} />
+      <input className="input-style" name="sudor" placeholder="Sudoración" value={answers.sudor} onChange={h} />
+      <input className="input-style sm:col-span-2" name="sed" placeholder="Sed y preferencias" value={answers.sed} onChange={h} />
+    </div>
+  );
+}
 
+const tongueFeatures = ['Pálida', 'Roja', 'Púrpura', 'Saburra Blanca', 'Saburra Amarilla', 'Saburra Gruesa', 'Grietas', 'Marcas Dentales', 'Punta Roja', 'Hincha', 'Delgada', 'Seca', 'Húmeda'];
 
-const BodyMapBack = ({ onClick, selectedParts }: { onClick: (part: string) => void; selectedParts: string[] }) => {
-    const BodyPart = ({ id, d, title }: { id: string; d: string; title?: string }) => {
-        const isSelected = selectedParts.some(partName => partName.toLowerCase().includes(id.replace(/-/g, ' ')));
-        return (
-            <path
-                id={id}
-                d={d}
-                className={`cursor-pointer transition-colors duration-200 ${isSelected ? 'fill-accent-red/80' : 'fill-gray-300 dark:fill-gray-600 hover:fill-primary/50'}`}
-                onClick={() => onClick(id)}
-            >
-                {title ? <title>{title}</title> : null}
-            </path>
-        );
-    }
-    return (
-        <svg viewBox="0 0 300 600" xmlns="http://www.w3.org/2000/svg" className="w-full max-w-[250px] mx-auto">
-            <g id="body-back">
-                <BodyPart id="cabeza" title="Cabeza (posterior)" d="M150,52c-20.5,0-37-16.5-37-37s16.5-37,37-37,37,16.5,37,37-16.5,37-37,37Z" />
-                <BodyPart id="cuello" title="Cuello (posterior)" d="M132,70c0,14,3,22,18,22s18-8,18-22c0-6-36-6-36,0Z" />
-                <BodyPart id="espalda-superior" title="Espalda superior" d="M108,100c-10,0-17,8.2-15.6,18,1.9,12.8,5.6,25.4,9.8,33.9,7.2,14.3,17.9,18.8,47.8,18.8s40.6-4.5,47.8-18.8c4.2-8.5,7.9-21.1,9.8-33.9,1.4-9.8-5.6-18-15.6-18H108Z" />
-                <BodyPart id="espalda-inferior" title="Espalda inferior" d="M118,170c-7,0-12.7,5.7-12.5,12.7,.3,11.6,2.3,24.5,6.9,35.3,7.5,17.5,19.1,25,37.6,25s30.1-7.5,37.6-25c4.6-10.8,6.6-23.7,6.9-35.3,.2-7-5.5-12.7-12.5-12.7H118Z" />
-                <BodyPart id="gluteos" title="Glúteos" d="M120,244c-10,0-16,9-13,18,6,18,19,32,43,32s37-14,43-32c3-9-3-18-13-18h-60Z" />
-                <BodyPart id="brazo-superior-derecho" title="Brazo superior posterior der." d="M210,108c9,0,15.8,7.4,15.4,16.2-.8,18.8-4.7,38.8-7.4,49-2.3,8.9-9.1,15-18.3,15-5,0-9.1-4.1-8.9-9.1l2.2-56.3c.4-10.8,6.2-14.8,17-14.8Z" />
-                <BodyPart id="brazo-superior-izquierdo" title="Brazo superior posterior izq." d="M90,108c-9,0-15.8,7.4-15.4,16.2,.8,18.8,4.7,38.8,7.4,49,2.3,8.9,9.1,15,18.3,15,5,0,9.1-4.1,8.9-9.1l-2.2-56.3c-.4-10.8-6.2-14.8-17-14.8Z" />
-                <BodyPart id="antebrazo-derecho" title="Antebrazo posterior der." d="M220,170c6.8,0,12.1,6,11.1,12.7-2.2,14.4-6.2,33.8-8.4,44.4-1.7,8.2-8.8,13.9-17.1,13.9-4.8,0-8.7-3.9-8.5-8.7l2-43.6c.6-10.4,8-18.7,20.9-18.7Z" />
-                <BodyPart id="antebrazo-izquierdo" title="Antebrazo posterior izq." d="M80,170c-6.8,0-12.1,6-11.1,12.7,2.2,14.4,6.2,33.8,8.4,44.4,1.7,8.2-8.8,13.9-17.1,13.9,4.8,0,8.7-3.9,8.5-8.7l-2-43.6c-.6-10.4-8-18.7-20.9-18.7Z" />
-                <BodyPart id="mano-derecha" title="Mano (dorso) der." d="M214,279c9,0,16,7.3,16,16.3,0,7.4-3.1,14.5-8.5,19.5-4.3,4-9.8,6.2-15.6,6.2-4.9,0-8.9-4-8.9-8.9,0-16.3,4.2-33.1,17-33.1Z" />
-                <BodyPart id="mano-izquierda" title="Mano (dorso) izq." d="M86,279c-9,0-16,7.3-16,16.3,0,7.4,3.1,14.5,8.5,19.5,4.3,4,9.8,6.2,15.6,6.2,4.9,0-8.9-4-8.9-8.9,0-16.3,4.2-33.1-17-33.1Z" />
-                <BodyPart id="muslo-derecho" title="Muslo posterior derecho" d="M172,290c11,0,20,8.9,20,19.9,0,22.5-2.1,61.2-4.5,80.8-1.4,10.7-9.9,18.7-20.6,18.7-6.1,0-10.9-4.8-10.9-10.9v-77.6c0-8.8,6.2-30.9,16-30.9Z" />
-                <BodyPart id="muslo-izquierdo" title="Muslo posterior izquierdo" d="M128,290c-11,0-20,8.9-20,19.9,0,22.5,2.1,61.2,4.5,80.8,1.4,10.7,9.9,18.7,20.6,18.7,6.1,0,10.9-4.8,10.9-10.9v-77.6c0-8.8,6.2-30.9-16-30.9Z" />
-                <BodyPart id="pierna-inferior-derecha" title="Pantorrilla derecha" d="M170,418c9.3,0,16.7,7.6,16.4,16.9-.7,17.1-2.7,44.6-4.6,58.1,1.3,8.8,8.8,15.3,17.7,15.3,5.6,0,10.1-4.5,10.1-10.1v-63.5c0-9.1-6.9-16.7-16-16.7Z" />
-                <BodyPart id="pierna-inferior-izquierda" title="Pantorrilla izquierda" d="M130,418c-9.3,0-16.7,7.6-16.4,16.9,.7,17.1,2.7,44.6,4.6,58.1-1.3,8.8-8.8,15.3-17.7,15.3-5.6,0-10.1-4.5-10.1-10.1v-63.5c0-9.1,6.9-16.7-16-16.7Z" />
-                <BodyPart id="pie-derecho" title="Talón derecho" d="M172,514c7.6,0,13.8,6.2,13.8,13.8,0,6.4-4.6,11.9-10.9,13.1l-19.6,3.8c-5,.9-9.4-2.9-9.4-8,0-10.5,8.5-22.7,26.1-22.7Z" />
-                <BodyPart id="pie-izquierdo" title="Talón izquierdo" d="M128,514c-7.6,0-13.8,6.2-13.8,13.8,0,6.4,4.6,11.9,10.9,13.1l19.6,3.8c5,.9,9.4-2.9,9.4-8,0-10.5-8.5-22.7-26.1-22.7Z" />
-            </g>
-        </svg>
-    );
-};
+function StepTongue({ answers, onToggle }: { answers: string[]; onToggle: (v: string) => void }) {
+  return (
+    <div className="flex flex-wrap gap-2 max-w-3xl mx-auto">
+      {tongueFeatures.map((f) => (
+        <label key={f} className={`px-3 py-1 rounded-full border cursor-pointer ${answers.includes(f) ? 'bg-primary text-white border-primary' : 'bg-white dark:bg-bg-alt border-border-main dark:border-border-dark'}`}>
+          <input type="checkbox" className="hidden" checked={answers.includes(f)} onChange={() => onToggle(f)} /> {f}
+        </label>
+      ))}
+    </div>
+  );
+}
 
+function StepSummary({ answers, onExport }: { answers: any; onExport: () => void }) {
+  return (
+    <div className="max-w-4xl mx-auto space-y-4">
+      <h4 className="text-lg font-semibold text-main dark:text-main">Resumen</h4>
+      <section className="bg-gray-50 dark:bg-bg-dark p-3 rounded">
+        <pre className="text-xs whitespace-pre-wrap">{JSON.stringify(answers, null, 2)}</pre>
+      </section>
+      <div className="flex gap-2">
+        <button onClick={onExport} className="btn-secondary">Descargar PDF</button>
+        <button className="btn-secondary" onClick={() => navigator.share?.({ title: 'Consulta Inicial', text: 'Resumen', url: window.location.href })}>Compartir</button>
+      </div>
+    </div>
+  );
+}
 
-// --- END OF FORMS SECTION ---
-
+// --- END OF CLINICAL WIZARD ---
 
 const ChatInterface = ({ messages, onSendMessage, user, adminId }: { messages: ChatMessage[], onSendMessage: Function, user: User, adminId: number | null }) => {
     const [newMessage, setNewMessage] = useState('');
