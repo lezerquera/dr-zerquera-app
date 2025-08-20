@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
-import type { ClinicInfo, Service, DoctorProfile, EducationItem, Appointment, DetailedInfo, Insurance, Conversation, ChatMessage, User, FormTemplate, Question, QuestionType, Patient, PatientDetails, PatientSubmissionDetail, ClinicalWizardAnswers } from '../types';
+import type { ClinicInfo, Service, DoctorProfile, EducationItem, Appointment, DetailedInfo, Insurance, Conversation, ChatMessage, User, FormTemplate, Question, QuestionType, Patient, PatientDetails, PatientSubmissionDetail, ClinicalWizardAnswers, PainFinding } from '../types';
 import { PageWrapper } from '../components/PageWrapper';
 import { Modal } from '../components/Modal';
 import { BuildingIcon, StethoscopeIcon, UsersIcon, PlusCircleIcon, EditIcon, TrashIcon, ClockIcon, CheckCircleIcon, GraduationCapIcon, CreditCardIcon, ShieldIcon, MessageSquareIcon, SendIcon, CalendarIcon, AlertTriangleIcon, ClipboardListIcon, ChevronRightIcon } from '../components/Icons';
@@ -1152,72 +1153,102 @@ const PatientDetailModal = ({ patient, token, onClose }: { patient: Patient, tok
     };
 
     const WizardAnswersDisplay = ({ answers }: { answers: ClinicalWizardAnswers }) => {
-      return (
-        <div className="space-y-4 text-sm">
-            {answers.generalData && (
-                <div>
-                    <h4 className="font-semibold text-main dark:text-main mb-1">Datos Generales</h4>
-                    <div className="pl-3 border-l-2 border-accent-warm space-y-1">
-                        <p><strong>Nombre:</strong> {answers.generalData.fullName}</p>
-                        <p><strong>Edad:</strong> {answers.generalData.age}</p>
-                        <p><strong>Sexo:</strong> {answers.generalData.gender}</p>
-                        <p><strong>Ocupación:</strong> {answers.generalData.occupation}</p>
-                        <p><strong>Contacto:</strong> {answers.generalData.contact}</p>
-                    </div>
+        const { generalData, consultationReason, painFindings, mtc, tongue } = answers;
+
+        const SummaryItem = ({ label, value }: { label: string; value?: string | number | string[] }) => {
+            if (!value || (Array.isArray(value) && value.length === 0)) return null;
+            return (
+                <div className="py-2 grid grid-cols-3 gap-4">
+                    <dt className="text-sm font-medium text-gray-500 dark:text-text-muted-dark">{label}</dt>
+                    <dd className="text-sm text-gray-900 dark:text-main col-span-2">{Array.isArray(value) ? value.join(', ') : value}</dd>
                 </div>
-            )}
-            {answers.consultationReason && (
-                 <div>
-                    <h4 className="font-semibold text-main dark:text-main mb-1">Motivo de Consulta</h4>
-                    <div className="pl-3 border-l-2 border-accent-warm space-y-1">
-                        <p><strong>Razón:</strong> {answers.consultationReason.reason}</p>
-                        <p><strong>Duración:</strong> {answers.consultationReason.duration}</p>
-                    </div>
-                </div>
-            )}
-            {answers.bodyMap && answers.bodyMap.length > 0 && (
-                <div>
-                    <h4 className="font-semibold text-main dark:text-main mb-1">Mapa de Dolor</h4>
-                     <div className="pl-3 border-l-2 border-accent-warm space-y-2">
-                        {answers.bodyMap.map((point, i) => (
-                            <div key={i}>
-                                <p><strong>Zona:</strong> <span className="capitalize">{point.bodyPart.replace(/-/g, ' ')}</span> ({point.view === 'front' ? 'Frontal' : 'Trasera'})</p>
-                                <p><strong>Tipo:</strong> {point.painType} | <strong>Intensidad:</strong> {point.intensity}/10 | <strong>Duración:</strong> {point.duration}</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-             {answers.mtc && (
-                 <div>
-                    <h4 className="font-semibold text-main dark:text-main mb-1">Principios MTC (Bā Gāng)</h4>
-                    <div className="pl-3 border-l-2 border-accent-warm grid grid-cols-2 gap-x-4">
-                        <p><strong>Sensación:</strong> {answers.mtc.coldHeat}</p>
-                        <p><strong>Predominio:</strong> {answers.mtc.dayNight}</p>
-                        <p><strong>Naturaleza:</strong> {answers.mtc.fullEmpty}</p>
-                        <p><strong>Inicio:</strong> {answers.mtc.onset}</p>
-                    </div>
-                </div>
-            )}
-             {answers.tongue && answers.tongue.length > 0 &&(
-                 <div>
-                    <h4 className="font-semibold text-main dark:text-main mb-1">Evaluación de Lengua</h4>
-                    <div className="pl-3 border-l-2 border-accent-warm">
-                       <p>{answers.tongue.join(', ')}</p>
-                    </div>
-                </div>
-            )}
-        </div>
-      );
+            );
+        };
+
+        const SummarySection = ({ title, children }: { title: string; children: React.ReactNode }) => (
+            <div>
+                <h4 className="text-md font-bold text-primary dark:text-accent-turquoise mb-2 pb-1 border-b border-border-main dark:border-border-dark">{title}</h4>
+                <dl className="divide-y divide-gray-200 dark:divide-border-dark">{children}</dl>
+            </div>
+        );
+        
+        const formatFactors = (factors: string[] = []): string => {
+            if (!factors || factors.length === 0) return 'N/A';
+            const aggravates = factors.filter(f => f.startsWith('empeora_')).map(f => f.replace('empeora_', '')).join(', ');
+            const alleviates = factors.filter(f => f.startsWith('alivia_')).map(f => f.replace('alivia_', '')).join(', ');
+            let parts = [];
+            if (aggravates) parts.push(`Empeora: ${aggravates}`);
+            if (alleviates) parts.push(`Alivia: ${alleviates}`);
+            return parts.join('; ') || 'N/A';
+        }
+
+        const labelRegion = (k: string) => k.replace(/_/g, ' ').replace(/izq|der/g, m => ({izq: 'izquierdo', der: 'derecho'}[m] || m)).replace(/\b\w/g, l => l.toUpperCase());
+
+        return (
+            <div className="space-y-6 text-sm">
+                {generalData && (
+                    <SummarySection title="Datos Generales">
+                        <SummaryItem label="Nombre Completo" value={generalData.fullName} />
+                        <SummaryItem label="Edad" value={generalData.age} />
+                        <SummaryItem label="Sexo" value={generalData.gender} />
+                        <SummaryItem label="Ocupación" value={generalData.occupation} />
+                        <SummaryItem label="Teléfono" value={generalData.contact} />
+                        <SummaryItem label="Antecedentes Médicos" value={generalData.antecedentes} />
+                        <SummaryItem label="Antecedentes Familiares" value={generalData.familiares} />
+                        <SummaryItem label="Hábitos de Vida" value={generalData.habitos} />
+                        <SummaryItem label="Alergias" value={generalData.alergias} />
+                        <SummaryItem label="Medicación Actual" value={generalData.medicacion} />
+                    </SummarySection>
+                )}
+
+                {consultationReason && (
+                    <SummarySection title="Motivo de Consulta">
+                        <SummaryItem label="Motivo Principal" value={consultationReason.reason} />
+                        <SummaryItem label="Duración de Síntomas" value={consultationReason.duration} />
+                        <SummaryItem label="Severidad" value={`${consultationReason.severity}/10`} />
+                        <SummaryItem label="Expectativas" value={consultationReason.expectations} />
+                        <SummaryItem label="Síntomas Asociados" value={consultationReason.associated} />
+                    </SummarySection>
+                )}
+
+                {painFindings && painFindings.length > 0 && (
+                    <SummarySection title="Hallazgos de Dolor">
+                        <div className="space-y-3 pt-2">
+                            {painFindings.map((finding: PainFinding, i: number) => (
+                                <div key={i} className="pl-3 border-l-2 border-accent-warm">
+                                    <p className="font-semibold capitalize text-main dark:text-main">{labelRegion(finding.region)} ({finding.side})</p>
+                                    <p className="text-xs text-muted dark:text-text-muted-dark capitalize">{finding.quality} · Intensidad {finding.intensity}/10</p>
+                                    <p className="text-xs text-muted dark:text-text-muted-dark mt-1">Factores: {formatFactors(finding.factors)}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </SummarySection>
+                )}
+
+                {mtc && (
+                    <SummarySection title="Principios MTC">
+                        <SummaryItem label="Apetito/Digestión" value={mtc.apetito} />
+                        <SummaryItem label="Sueño" value={mtc.sueno} />
+                        <SummaryItem label="Emociones" value={mtc.emociones} />
+                        <SummaryItem label="Sudoración" value={mtc.sudor} />
+                        <SummaryItem label="Sed y Preferencias" value={mtc.sed} />
+                    </SummarySection>
+                )}
+
+                {tongue && tongue.length > 0 && (
+                    <SummarySection title="Evaluación de Lengua">
+                        <SummaryItem label="Características" value={tongue} />
+                    </SummarySection>
+                )}
+            </div>
+        );
     };
 
     const renderSubmissionDetails = (sub: PatientSubmissionDetail) => {
-        // Check if answers follow the clinical wizard structure
-        const isWizard = 'generalData' in sub.answers || 'bodyMap' in sub.answers || 'consultationReason' in sub.answers;
+        const isWizard = 'painFindings' in sub.answers || 'generalData' in sub.answers;
         if (isWizard) {
             return <WizardAnswersDisplay answers={sub.answers as ClinicalWizardAnswers} />
         } else {
-            // Fallback for generic forms
             return (
                  <div className="p-4 border-t border-border-main dark:border-border-dark space-y-3 bg-bg-main dark:bg-bg-main">
                     {Object.entries(sub.answers).map(([qId, answer]) => (

@@ -1,3 +1,4 @@
+
 export interface User {
   id: number;
   email: string;
@@ -150,12 +151,12 @@ export interface PatientFormSubmission {
 }
 
 // --- Tipos para el nuevo Asistente Clínico ---
-export interface BodyPainPoint {
-  bodyPart: string;
-  painType: string;
+export interface PainFinding {
+  region: string;
+  side: 'izquierdo' | 'derecho' | 'ambos' | 'medio';
+  quality: string;
   intensity: number;
-  duration: string;
-  view: 'front' | 'back';
+  factors?: string[];
 }
 
 export interface ClinicalWizardAnswers {
@@ -165,19 +166,29 @@ export interface ClinicalWizardAnswers {
     gender: string;
     occupation: string;
     contact: string;
+    antecedentes?: string;
+    familiares?: string;
+    habitos?: string;
+    alergias?: string;
+    medicacion?: string;
   };
   consultationReason?: {
     reason: string;
     duration: string;
+    severity?: number;
+    expectations?: string;
+    associated?: string[];
   };
-  bodyMap?: BodyPainPoint[];
+  painFindings?: PainFinding[];
   mtc?: {
-    coldHeat: 'Frío' | 'Calor';
-    dayNight: 'Día' | 'Noche';
-    fullEmpty: 'Plenitud' | 'Vacío';
-    onset: 'Agudo' | 'Crónico';
+    apetito?: string;
+    sueno?: string;
+    emociones?: string;
+    sudor?: string;
+    sed?: string;
   };
   tongue?: string[];
+  sex?: 'male' | 'female';
 }
 
 
