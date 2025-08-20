@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Logo } from '../components/Icons';
+import { Logo } from '../components/Icons.tsx';
 
 interface LoginPageProps {
   onLogin: (token: string) => void;
@@ -92,12 +92,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                     ¿No tienes una cuenta?{' '}
                     <Link to="/register" className="font-medium text-primary-light hover:text-primary dark:text-primary dark:hover:text-primary-light">
                         Regístrate aquí
-                    </Link>
-                </p>
-                <p>
-                    ¿Buscas información?{' '}
-                    <Link to="/atlas" className="font-medium text-primary-light hover:text-primary dark:text-primary dark:hover:text-primary-light">
-                        Explora el Atlas de Acupuntura
                     </Link>
                 </p>
             </div>

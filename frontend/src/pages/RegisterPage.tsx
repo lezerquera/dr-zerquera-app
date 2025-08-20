@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Logo } from '../components/Icons';
-import type { Insurance } from '../types';
+import { Logo } from '../components/Icons.tsx';
 
 interface RegisterPageProps {
   onRegister: (token: string) => void;
@@ -10,27 +9,12 @@ interface RegisterPageProps {
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
-  const [formData, setFormData] = useState({ name: '', email: '', password: '', insuranceId: '' });
-  const [insurances, setInsurances] = useState<Insurance[]>([]);
+  const [formData, setFormData] = useState({ name: '', email: '', password: '' });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchInsurances = async () => {
-        try {
-            const response = await fetch(`${API_BASE_URL}/insurances/all`);
-            if (response.ok) {
-                setInsurances(await response.json());
-            }
-        } catch (error) {
-            console.error("Failed to fetch insurances for registration form", error);
-        }
-    };
-    fetchInsurances();
-  }, []);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
@@ -113,21 +97,6 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
                         className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-main"
                         placeholder="Mínimo 8 caracteres"
                     />
-                </div>
-                 <div>
-                    <label htmlFor="insuranceId" className="block text-sm font-medium text-main dark:text-main">Seguro Médico (Opcional)</label>
-                    <select
-                        id="insuranceId"
-                        name="insuranceId"
-                        value={formData.insuranceId}
-                        onChange={handleChange}
-                        className="mt-1 block w-full px-3 py-2 bg-bg-main dark:bg-bg-main border border-border-main dark:border-border-dark rounded-md shadow-sm focus:outline-none focus:ring-primary-light focus:border-primary-light dark:text-main"
-                    >
-                        <option value="">No tengo / Otro</option>
-                        {insurances.map(ins => (
-                            <option key={ins.id} value={ins.id}>{ins.name}</option>
-                        ))}
-                    </select>
                 </div>
                 <div>
                     <button
