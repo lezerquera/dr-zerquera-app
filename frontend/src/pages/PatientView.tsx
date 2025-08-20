@@ -798,12 +798,159 @@ const ClinicalWizard = ({ template, user, token, onSubmitSuccess }: { template: 
   };
 
   const exportPDF = () => {
-    const doc = new jsPDF();
-    doc.text('Resumen Consulta Inicial', 10, 10);
-    doc.setFontSize(10);
-    const safe = JSON.parse(JSON.stringify(answers));
-    doc.text(JSON.stringify(safe, null, 2), 10, 20);
-    doc.save('consulta_inicial.pdf');
+    const doc = new jsPDF({ unit: 'px', format: 'a4' });
+    
+    const { generalData, consultationReason, painFindings, mtc, tongue } = answers;
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 30; // in px
+    let y = margin + 10; // Vertical cursor
+
+    // Helper to add text and handle page breaks
+    const addText = (text: string | string[], x: number, options: any = {}) => {
+        const textY = y;
+        const lineHeight = doc.getLineHeight() * 0.5;
+        const textHeight = Array.isArray(text) ? text.length * lineHeight : lineHeight;
+
+        if (textY + textHeight > pageHeight - margin) {
+            doc.addPage();
+            y = margin;
+        }
+        doc.text(text, x, y, options);
+        y += textHeight + 5;
+    };
+    
+    // Helper for sections
+    const addSection = (title: string, content: () => void) => {
+      if (y > pageHeight - margin - 30) { // Check if space for title + content
+          doc.addPage();
+          y = margin;
+      }
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      addText(title, margin);
+      y += 5; 
+      doc.setLineWidth(0.5);
+      doc.line(margin, y - 4, pageWidth - margin, y - 4);
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      content();
+      y += 15; // space after section
+    };
+    
+    const addKeyValue = (key: string, value: string | undefined | null) => {
+        if (!value || value.trim() === '') return;
+        
+        const keyText = `${key}:`;
+        const valueText = value;
+        const keyWidth = doc.getTextWidth(keyText) + 2;
+
+        doc.setFont('helvetica', 'bold');
+        const splitKey = doc.splitTextToSize(keyText, pageWidth - margin * 2);
+        
+        doc.setFont('helvetica', 'normal');
+        const splitValue = doc.splitTextToSize(valueText, pageWidth - margin * 2 - keyWidth);
+
+        const totalHeight = Math.max(splitKey.length, splitValue.length) * doc.getLineHeight() * 0.5;
+        
+        if (y + totalHeight > pageHeight - margin) {
+            doc.addPage();
+            y = margin;
+        }
+        
+        doc.setFont('helvetica', 'bold');
+        doc.text(keyText, margin + 5, y);
+        
+        doc.setFont('helvetica', 'normal');
+        doc.text(splitValue, margin + 5 + keyWidth, y);
+        y += totalHeight + 5;
+    };
+
+    // --- PDF Header ---
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Resumen de Consulta Inicial', pageWidth / 2, y, { align: 'center' });
+    y += 15;
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Paciente: ${generalData.fullName || 'No especificado'}`, margin, y);
+    doc.text(`Fecha: ${new Date().toLocaleDateString('es-ES')}`, pageWidth - margin, y, { align: 'right' });
+    y += 15;
+    doc.setLineWidth(1);
+    doc.line(margin, y - 5, pageWidth - margin, y - 5);
+    y += 10;
+
+    // --- SECTIONS ---
+    if (generalData) {
+        addSection('Datos Generales', () => {
+            addKeyValue('Nombre Completo', generalData.fullName);
+            addKeyValue('Edad', generalData.age);
+            addKeyValue('Sexo', generalData.gender);
+            addKeyValue('Ocupación', generalData.occupation);
+            addKeyValue('Teléfono', generalData.contact);
+            addKeyValue('Antecedentes Médicos', generalData.antecedentes);
+            addKeyValue('Antecedentes Familiares', generalData.familiares);
+            addKeyValue('Hábitos de Vida', generalData.habitos);
+            addKeyValue('Alergias', generalData.alergias);
+            addKeyValue('Medicación Actual', generalData.medicacion);
+        });
+    }
+    
+    if (consultationReason) {
+         addSection('Motivo de Consulta', () => {
+            addKeyValue('Motivo Principal', consultationReason.reason);
+            addKeyValue('Duración de Síntomas', consultationReason.duration);
+            addKeyValue('Severidad', `${consultationReason.severity}/10`);
+            addKeyValue('Expectativas', consultationReason.expectations);
+            if (consultationReason.associated && consultationReason.associated.length > 0) {
+                 addKeyValue('Síntomas Asociados', consultationReason.associated.join(', '));
+            }
+        });
+    }
+
+    if (painFindings && painFindings.length > 0) {
+         addSection('Hallazgos de Dolor (Mapa Corporal)', () => {
+            painFindings.forEach((finding: PainFinding) => {
+                 const aggravates = (finding.factors || [])
+                    .filter(f => f.startsWith('empeora_'))
+                    .map(f => f.replace('empeora_', ''))
+                    .join(', ');
+                const alleviates = (finding.factors || [])
+                    .filter(f => f.startsWith('alivia_'))
+                    .map(f => f.replace('alivia_', ''))
+                    .join(', ');
+
+                let factorsText = '';
+                if (aggravates) factorsText += `Empeora: ${aggravates}. `;
+                if (alleviates) factorsText += `Alivia: ${alleviates}.`;
+                
+                const findingText = `· ${labelRegion(finding.region)} (${finding.side}): ${finding.quality}, Intensidad ${finding.intensity}/10. ${factorsText}`;
+                
+                const splitText = doc.splitTextToSize(findingText, pageWidth - (margin*2) - 5);
+                addText(splitText, margin + 5);
+            });
+        });
+    }
+    
+    if (mtc) {
+        addSection('Principios MTC', () => {
+            addKeyValue('Apetito/Digestión', mtc.apetito);
+            addKeyValue('Sueño', mtc.sueno);
+            addKeyValue('Emociones', mtc.emociones);
+            addKeyValue('Sudoración', mtc.sudor);
+            addKeyValue('Sed y Preferencias', mtc.sed);
+        });
+    }
+    
+     if (tongue && tongue.length > 0) {
+        addSection('Evaluación de Lengua', () => {
+            const tongueText = tongue.join(', ');
+            addText(doc.splitTextToSize(tongueText, pageWidth - (margin*2) - 5), margin + 5);
+        });
+    }
+
+    doc.save(`Resumen_${(generalData.fullName || 'Paciente').replace(/\s/g, '_')}.pdf`);
   };
 
   const submit = async () => {
