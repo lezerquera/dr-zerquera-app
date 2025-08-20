@@ -1403,16 +1403,111 @@ function StepTongue({ answers, onToggle }: { answers: string[]; onToggle: (v: st
   );
 }
 
+// Helper for the summary view
+const SummaryItem = ({ label, value }: { label: string; value?: string | number | string[] }) => {
+    if (!value || (Array.isArray(value) && value.length === 0)) return null;
+    return (
+        <div>
+            <p className="text-xs font-semibold text-gray-500 dark:text-text-muted-dark uppercase">{label}</p>
+            <p className="text-main dark:text-main">
+                {Array.isArray(value) ? value.join(', ') : value}
+            </p>
+        </div>
+    );
+};
+
+const SummarySection = ({ title, children }: { title: string; children: React.ReactNode }) => (
+    <div className="bg-gray-50 dark:bg-bg-alt/50 p-4 rounded-lg">
+        <h5 className="font-bold text-lg mb-3 text-primary dark:text-accent-turquoise">{title}</h5>
+        <div className="space-y-3">{children}</div>
+    </div>
+);
+
+
 function StepSummary({ answers, onExport }: { answers: any; onExport: () => void }) {
+    const { generalData, consultationReason, painFindings, mtc, tongue } = answers;
+
+    const formatFactors = (factors: string[] = []): string => {
+        if (!factors || factors.length === 0) return 'Ninguno especificado.';
+        
+        const aggravates = factors
+            .filter(f => f.startsWith('empeora_'))
+            .map(f => f.replace('empeora_', ''))
+            .join(', ');
+            
+        const alleviates = factors
+            .filter(f => f.startsWith('alivia_'))
+            .map(f => f.replace('alivia_', ''))
+            .join(', ');
+    
+        let parts = [];
+        if (aggravates) parts.push(`Empeora con: ${aggravates}`);
+        if (alleviates) parts.push(`Alivia con: ${alleviates}`);
+        
+        return parts.length > 0 ? parts.join('; ') : 'Ninguno especificado.';
+    }
+
   return (
     <div className="max-w-4xl mx-auto space-y-4">
-      <h4 className="text-lg font-semibold text-main dark:text-main">Resumen</h4>
-      <section className="bg-gray-50 dark:bg-bg-dark p-3 rounded">
-        <pre className="text-xs whitespace-pre-wrap">{JSON.stringify(answers, null, 2)}</pre>
-      </section>
-      <div className="flex gap-2">
-        <button onClick={onExport} className="btn-secondary">Descargar PDF</button>
-        <button className="btn-secondary" onClick={() => navigator.share?.({ title: 'Consulta Inicial', text: 'Resumen', url: window.location.href })}>Compartir</button>
+        <p className="text-sm text-center text-muted dark:text-text-muted-dark">Por favor, revise la información antes de finalizar. Puede volver a cualquier paso anterior para editarla.</p>
+        
+        {generalData && (
+            <SummarySection title="Datos Generales">
+                <SummaryItem label="Nombre" value={generalData.fullName} />
+                <div className="grid grid-cols-2 gap-4">
+                    <SummaryItem label="Edad" value={generalData.age} />
+                    <SummaryItem label="Sexo" value={generalData.gender} />
+                </div>
+                <SummaryItem label="Ocupación" value={generalData.occupation} />
+                <SummaryItem label="Teléfono" value={generalData.contact} />
+                <SummaryItem label="Antecedentes Médicos" value={generalData.antecedentes} />
+                <SummaryItem label="Medicación Actual" value={generalData.medicacion} />
+            </SummarySection>
+        )}
+
+        {consultationReason && (
+             <SummarySection title="Motivo de Consulta">
+                <SummaryItem label="Motivo Principal" value={consultationReason.reason} />
+                <SummaryItem label="Duración de Síntomas" value={consultationReason.duration} />
+                <SummaryItem label="Severidad" value={`${consultationReason.severity}/10`} />
+                <SummaryItem label="Síntomas Asociados" value={consultationReason.associated} />
+            </SummarySection>
+        )}
+
+        {painFindings && painFindings.length > 0 && (
+             <SummarySection title="Mapa de Dolor">
+                <ul className="space-y-3">
+                    {painFindings.map((f: PainFinding, i: number) => (
+                        <li key={i} className="border-t border-border-main dark:border-border-dark pt-3 first:border-t-0 first:pt-0">
+                            <p className="font-semibold capitalize text-main dark:text-main">{labelRegion(f.region)} ({f.side})</p>
+                            <p className="text-sm text-muted dark:text-text-muted-dark capitalize">{f.quality} · Intensidad {f.intensity}/10</p>
+                            <p className="text-sm text-muted dark:text-text-muted-dark">{formatFactors(f.factors)}</p>
+                        </li>
+                    ))}
+                </ul>
+            </SummarySection>
+        )}
+
+        {mtc && (
+             <SummarySection title="Principios MTC">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <SummaryItem label="Apetito/Digestión" value={mtc.apetito} />
+                    <SummaryItem label="Sueño" value={mtc.sueno} />
+                    <SummaryItem label="Emociones" value={mtc.emociones} />
+                    <SummaryItem label="Sudoración" value={mtc.sudor} />
+                </div>
+                 <SummaryItem label="Sed y Preferencias" value={mtc.sed} />
+            </SummarySection>
+        )}
+
+        {tongue && tongue.length > 0 && (
+            <SummarySection title="Evaluación de Lengua">
+                <SummaryItem label="Características Observadas" value={tongue} />
+            </SummarySection>
+        )}
+
+      <div className="flex gap-2 justify-center pt-4">
+        <button onClick={onExport} className="btn-secondary">Descargar Resumen PDF</button>
       </div>
     </div>
   );
