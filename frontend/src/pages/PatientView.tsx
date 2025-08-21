@@ -263,7 +263,7 @@ const Dashboard = ({ user, doctorProfile, appointments, clinicInfo, acceptedInsu
                     {/* Philosophy */}
                     <div className="text-center py-6 bg-accent-warm/30 dark:bg-primary/10 rounded-xl">
                         <p className="text-xl italic text-primary dark:text-accent-turquoise px-4">"Tratamos la causa, no solo el síntoma, para una salud integral y duradera."</p>
-                        <p className="mt-2 font-semibold text-main dark:text-main">- Dr. Pablo J. Zerquera</p>
+                        <p className="mt-2 font-semibold text-main dark:text-main">- Dr. Pablo Zerquera</p>
                     </div>
 
                     {/* Appointment History */}
